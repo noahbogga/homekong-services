@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HOMEKONG</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#060d1a;color:#fff;font-family:'Inter',sans-serif;min-height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center}
+canvas#bg{position:fixed;inset:0;z-index:0}
+.glow-orb{position:fixed;border-radius:50%;filter:blur(120px);opacity:.15;animation:drift 20s infinite alternate ease-in-out;z-index:0}
+.glow-orb.a{width:600px;height:600px;background:#C2A35A;top:-200px;left:-100px;animation-delay:0s}
+.glow-orb.b{width:500px;height:500px;background:#1a6fff;bottom:-150px;right:-100px;animation-delay:-7s}
+.glow-orb.c{width:400px;height:400px;background:#34d399;top:50%;left:60%;animation-delay:-13s}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-30px) scale(1.1)}100%{transform:translate(-20px,20px) scale(.95)}}
+.container{position:relative;z-index:1;text-align:center;padding:40px 24px}
+.logo{width:100px;height:100px;border-radius:22%;margin-bottom:24px;box-shadow:0 0 40px rgba(194,163,90,.3);animation:logoPulse 4s infinite ease-in-out}
+@keyframes logoPulse{0%,100%{box-shadow:0 0 40px rgba(194,163,90,.2)}50%{box-shadow:0 0 60px rgba(194,163,90,.45)}}
+h1{font-family:'Cinzel',serif;font-size:2rem;letter-spacing:.15em;margin-bottom:6px;background:linear-gradient(180deg,#F5F0E6 0%,#C2A35A 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tagline{font-size:.7rem;letter-spacing:.25em;text-transform:uppercase;color:rgba(194,163,90,.6);margin-bottom:48px}
+.connect-btn{position:relative;display:inline-block;background:linear-gradient(180deg,#E7D9A8,#C2A35A 55%,#A9883F);color:#1a1306;padding:18px 56px;border-radius:6px;text-decoration:none;font-size:.85rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;border:1px solid #8A6F33;transition:transform .2s,box-shadow .2s,opacity .2s;box-shadow:0 8px 32px -8px rgba(194,163,90,.5);cursor:pointer;overflow:hidden}
+.connect-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);transform:translateX(-100%);transition:none}
+.connect-btn:hover{transform:translateY(-3px);box-shadow:0 16px 48px -10px rgba(194,163,90,.7)}
+.connect-btn:hover::before{transform:translateX(100%);transition:transform .6s}
+.connect-btn.disabled{opacity:.3;pointer-events:none;transform:none;box-shadow:none;cursor:not-allowed}
+.status-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#666}
+.status-dot.online{background:#34d399;box-shadow:0 0 8px rgba(52,211,153,.6);animation:pulse 2s infinite}
+.status-dot.offline{background:#ef4444;box-shadow:0 0 8px rgba(239,68,68,.4)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.status-text{font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(245,240,230,.5)}
+.status-text.online{color:rgba(52,211,153,.8)}
+.status-text.offline{color:rgba(239,68,68,.7)}
+.player-count{font-size:.65rem;color:rgba(194,163,90,.5);margin-top:8px;letter-spacing:.1em}
+.overlay{display:none;position:fixed;inset:0;background:rgba(6,13,26,.85);backdrop-filter:blur(8px);z-index:100;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.modal{background:rgba(26,39,68,.95);border:1px solid rgba(194,163,90,.25);border-radius:10px;padding:36px 44px;max-width:420px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.5)}
+.modal h2{font-family:'Cinzel',serif;font-size:1.1rem;margin-bottom:14px;color:#C2A35A}
+.modal p{font-size:.8rem;line-height:1.7;color:rgba(245,240,230,.75);margin-bottom:8px}
+.modal .hint{font-size:.62rem;color:rgba(194,163,90,.5);margin-top:16px;letter-spacing:.05em}
+.modal .btn-ok{margin-top:22px;padding:12px 36px;background:#C2A35A;color:#1a1306;border:none;border-radius:4px;font-weight:600;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:background .2s}
+.modal .btn-ok:hover{background:#a9883f}
+.trouble-link{display:inline-block;margin-top:26px;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(245,240,230,.4);text-decoration:underline;text-underline-offset:3px;cursor:pointer;transition:color .2s}
+.trouble-link:hover{color:rgba(194,163,90,.8)}
+.copy-box{display:none;margin-top:16px;max-width:340px;margin-left:auto;margin-right:auto}
+.copy-box.show{display:block}
+.copy-box .copy-label{font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(245,240,230,.4);margin-bottom:8px}
+.copy-box .copy-hint{font-size:.58rem;color:rgba(245,240,230,.35);margin-top:10px;line-height:1.6}
+.copy-row{display:flex;align-items:stretch;gap:0;border:1px solid rgba(194,163,90,.3);border-radius:5px;overflow:hidden;background:rgba(6,13,26,.6)}
+.copy-row code{flex:1;padding:11px 14px;font-family:'Inter',monospace;font-size:.72rem;color:#F5F0E6;letter-spacing:.02em;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:all}
+.copy-row button{background:rgba(194,163,90,.15);border:none;border-left:1px solid rgba(194,163,90,.3);color:#C2A35A;padding:0 16px;font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s,color .2s;white-space:nowrap}
+.copy-row button:hover{background:rgba(194,163,90,.28)}
+.copy-row button.copied{background:#34d399;color:#06210f}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="glow-orb a"></div>
+<div class="glow-orb b"></div>
+<div class="glow-orb c"></div>
+
+<div class="container">
+  <img src="/logo.png" alt="HOMEKONG" class="logo"><br>
+  <h1>HOMEKONG</h1>
+  <p class="tagline">FiveM Roleplay</p>
+  <a id="connectBtn" href="#" class="connect-btn disabled" onclick="doConnect(event)">Checking...</a>
+  <div class="status-row">
+    <span class="status-dot" id="statusDot"></span>
+    <span class="status-text" id="statusMsg">Checking...</span>
+  </div>
+  <p class="player-count" id="playerCount"></p>
+  <span class="trouble-link" id="troubleLink" onclick="toggleCopyBox()">Having trouble connecting?</span>
+  <div class="copy-box" id="copyBox">
+    <div class="copy-label">Connect manually in FiveM</div>
+    <div class="copy-row">
+      <code id="connectAddr">connect fivem.homekong.online:30120</code>
+      <button id="copyBtn" onclick="copyAddr()">Copy</button>
+    </div>
+    <div class="copy-hint">Open FiveM, press <strong>F8</strong>, paste, and hit Enter.<br>Using Direct Connect instead? Use just <strong>fivem.homekong.online:30120</strong></div>
+  </div>
+</div>
+<div class="overlay" id="allowOverlay">
+  <div class="modal">
+    <h2>Allow FiveM to Open</h2>
+    <p>Your browser is asking permission to open FiveM.</p>
+    <p>Click <strong>"Allow"</strong> or <strong>"Open FiveM"</strong> on the browser popup.</p>
+    <p class="hint">Tick "Always allow" for a smoother experience next time.</p>
+  </div>
+</div>
+
+<div class="overlay" id="loadingOverlay">
+  <div class="modal">
+    <h2>Connecting...</h2><p style="font-size:.75rem;color:rgba(245,240,230,.5);margin-top:8px;">FiveM is launching. Please wait — do not click again.</p><p style="font-size:.65rem;color:rgba(245,240,230,.3);margin-top:12px;cursor:pointer;text-decoration:underline;" onclick="dismissLoading()">Dismiss this overlay</p>
+    <p>FiveM is loading the server. Please wait a moment for the game to start.</p>
+    <p class="hint">If FiveM didn't open, click the button again or check if FiveM is installed.</p>
+    <button class="btn-ok" onclick="dismissLoading()">Close</button>
+  </div>
+</div>
+
+<script>
+(function(){
+var c=document.getElementById('bg'),ctx=c.getContext('2d');
+var particles=[];
+function resize(){c.width=window.innerWidth;c.height=window.innerHeight;}
+window.addEventListener('resize',resize);resize();
+for(var i=0;i<80;i++){
+  particles.push({x:Math.random()*c.width,y:Math.random()*c.height,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.5+.5,a:Math.random()*.4+.1});
+}
+function draw(){
+  ctx.clearRect(0,0,c.width,c.height);
+  for(var i=0;i<particles.length;i++){
+    var p=particles[i];
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=c.width;if(p.x>c.width)p.x=0;
+    if(p.y<0)p.y=c.height;if(p.y>c.height)p.y=0;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle='rgba(194,163,90,'+p.a+')';ctx.fill();
+  }
+  for(var i=0;i<particles.length;i++){
+    for(var j=i+1;j<particles.length;j++){
+      var dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y;
+      var dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<120){
+        ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.strokeStyle='rgba(194,163,90,'+((.08)*(1-dist/120))+')';ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+})();
+
+var isDebug=window.location.hostname.indexOf('debug')!==-1;
+var connectUrl=isDebug?'fivem://connect/debug-fivem.homekong.online:30121':'fivem://connect/fivem.homekong.online';
+var btn=document.getElementById('connectBtn');
+var statusMsg=document.getElementById('statusMsg');
+var statusDot=document.getElementById('statusDot');
+var playerCount=document.getElementById('playerCount');
+var serverOnline=false;
+
+btn.textContent=isDebug?'Join Debug Server':'Join Server';
+document.title=isDebug?'HOMEKONG - Debug':'HOMEKONG - Join';
+
+function checkStatus(){
+  fetch('https://tx.homekong.cc/.hk/api/status')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var online=isDebug?d.debug:d.game;
+      serverOnline=online;
+      if(online){
+        btn.classList.remove('disabled');btn.href=connectUrl;
+        statusMsg.textContent='Server Online';statusMsg.className='status-text online';
+        statusDot.className='status-dot online';
+        if(!isDebug&&d.players!==undefined){playerCount.textContent=d.players+'/32 players';}
+      }else{
+        btn.classList.add('disabled');btn.href='#';
+        statusMsg.textContent='Server Offline';statusMsg.className='status-text offline';
+        statusDot.className='status-dot offline';playerCount.textContent='';
+      }
+    }).catch(function(){
+      statusMsg.textContent='Unable to check';statusMsg.className='status-text';
+      statusDot.className='status-dot';
+    });
+}
+
+var connecting=false;
+function doConnect(e){
+  e.preventDefault();
+  if(!serverOnline||connecting)return;
+  connecting=true;
+  document.getElementById('allowOverlay').classList.add('show');
+  window.location.href=connectUrl;
+  var blurred=false,timeout=null;
+  function onBlur(){blurred=true;}
+  function onFocus(){if(blurred){cleanup();showLoading();}}
+  function onVis(){if(document.visibilityState==='hidden')blurred=true;if(document.visibilityState==='visible'&&blurred){cleanup();showLoading();}}
+  function cleanup(){window.removeEventListener('blur',onBlur);window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVis);if(timeout)clearTimeout(timeout);}
+  function showLoading(){document.getElementById('allowOverlay').classList.remove('show');document.getElementById('loadingOverlay').classList.add('show');setTimeout(function(){document.getElementById('loadingOverlay').classList.remove('show');connecting=false;},60000);}
+  window.addEventListener('blur',onBlur);window.addEventListener('focus',onFocus);document.addEventListener('visibilitychange',onVis);
+  timeout=setTimeout(function(){cleanup();showLoading();},15000);
+}
+
+function dismissLoading(){document.getElementById('loadingOverlay').classList.remove('show');connecting=false;}
+
+function toggleCopyBox(){document.getElementById('copyBox').classList.toggle('show');}
+function copyAddr(){
+  var addr=document.getElementById('connectAddr').textContent.trim();
+  var btn=document.getElementById('copyBtn');
+  function done(){btn.textContent='Copied';btn.classList.add('copied');setTimeout(function(){btn.textContent='Copy';btn.classList.remove('copied');},1800);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(addr).then(done).catch(fallback);
+  }else{fallback();}
+  function fallback(){
+    var r=document.createRange();r.selectNode(document.getElementById('connectAddr'));
+    var sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);
+    try{document.execCommand('copy');done();}catch(e){}
+    sel.removeAllRanges();
+  }
+}
+checkStatus();setInterval(checkStatus,10000);
+</script>
+</body>
+</html>

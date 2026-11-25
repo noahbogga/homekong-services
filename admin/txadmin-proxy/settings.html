@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HOMEKONG - Settings</title>
+<link rel="icon" type="image/png" href="/.hk/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:#0C1838;font-family:'Inter',sans-serif;color:#F5F0E6;padding:24px}
+.header{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.header img{width:40px;height:40px;border-radius:12%}
+.header h1{font-family:'Cinzel',serif;font-size:1.1rem;letter-spacing:.1em}
+.back-btn{margin-left:auto;padding:8px 16px;font-family:'Inter',sans-serif;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;border:1px solid rgba(194,163,90,.3);cursor:pointer;color:#C2A35A;background:rgba(194,163,90,.08);text-decoration:none}
+.back-btn:hover{background:rgba(194,163,90,.15)}
+.content{max-width:600px;margin:0 auto}
+.section{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:20px;margin-bottom:20px}
+.section h2{font-family:'Cinzel',serif;font-size:.85rem;letter-spacing:.08em;margin-bottom:16px;color:#C2A35A}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,240,230,.5);margin-bottom:5px}
+.field input{width:100%;padding:10px 12px;background:rgba(255,255,255,.05);border:1px solid rgba(194,163,90,.2);border-radius:4px;color:#F5F0E6;font-size:.85rem;font-family:'Inter',sans-serif;outline:none}
+.field input:focus{border-color:rgba(194,163,90,.5)}
+.btn{padding:10px 20px;font-family:'Inter',sans-serif;font-weight:500;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;border:none;cursor:pointer;transition:background .2s}
+.btn-primary{color:#1a1306;background:#C2A35A}.btn-primary:hover{background:#a9883f}
+.btn-danger{color:#fff;background:#dc3545}.btn-danger:hover{background:#b02a37}
+.btn-secondary{color:#C2A35A;background:rgba(194,163,90,.1);border:1px solid rgba(194,163,90,.3)}.btn-secondary:hover{background:rgba(194,163,90,.2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.msg{font-size:.72rem;margin-top:8px;min-height:16px}
+.msg.ok{color:#34d399}.msg.err{color:#e74c3c}
+.qr-wrap{text-align:center;margin:12px 0}
+.qr-wrap img{max-width:200px;border-radius:8px;background:#fff;padding:8px}
+.recovery-box{background:rgba(220,53,69,.1);border:1px solid rgba(220,53,69,.3);border-radius:4px;padding:12px;margin-top:12px;text-align:center}
+.recovery-box code{font-family:'JetBrains Mono',monospace;font-size:.9rem;color:#ef4444;word-break:break-all}
+.recovery-box p{font-size:.65rem;color:rgba(245,240,230,.6);margin-top:6px}
+.user-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.user-row:last-child{border-bottom:none}
+.user-name{font-size:.8rem;flex:1}
+.user-role{font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:3px;background:rgba(194,163,90,.15);color:#C2A35A}
+.user-role.admin{background:rgba(52,211,153,.15);color:#34d399}
+.badge-2fa{font-size:.6rem;padding:2px 6px;border-radius:3px;background:rgba(52,211,153,.15);color:#34d399;margin-left:6px}
+.add-user-form{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}
+.add-user-form input{flex:1;min-width:100px;padding:8px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(194,163,90,.2);border-radius:4px;color:#F5F0E6;font-size:.8rem;font-family:'Inter',sans-serif}
+.add-user-form select{padding:8px;background:rgba(255,255,255,.05);border:1px solid rgba(194,163,90,.2);border-radius:4px;color:#F5F0E6;font-size:.8rem}
+@media(max-width:600px){
+  body{padding:16px}
+  .header h1{font-size:1.4rem}
+  .section{padding:16px}
+  .section h2{font-size:1rem}
+  .field label{font-size:.8rem}
+  .field input{font-size:1rem;padding:14px}
+  .btn{font-size:.9rem;padding:14px 20px}
+  .user-row{flex-wrap:wrap;gap:8px}
+  .add-user-form{flex-direction:column}
+  .add-user-form input,.add-user-form select{min-width:auto}
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <img src="/.hk/logo.png" alt="HOMEKONG">
+  <h1>Settings</h1>
+  <a href="/" class="back-btn">← Back</a>
+</div>
+<div class="content">
+  <!-- CHANGE PASSWORD -->
+  <div class="section">
+    <h2>Change Password</h2>
+    <form id="pwForm">
+      <div class="field"><label>Current Password</label><input type="password" id="pwCurrent" required></div>
+      <div class="field"><label>New Password</label><input type="password" id="pwNew" minlength="6" required></div>
+      <div class="field"><label>Confirm New Password</label><input type="password" id="pwConfirm" minlength="6" required></div>
+      <button type="submit" class="btn btn-primary">Update Password</button>
+      <p class="msg" id="pwMsg"></p>
+    </form>
+  </div>
+  <!-- 2FA SECTION -->
+  <div class="section">
+    <h2>Two-Factor Authentication</h2>
+    <div id="2faStatus"></div>
+    <div id="2faSetup" class="hidden">
+      <p style="font-size:.72rem;color:rgba(245,240,230,.6);margin-bottom:12px">Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.)</p>
+      <div class="qr-wrap"><img id="2faQR" src="" alt="QR"></div>
+      <p style="font-size:.65rem;color:rgba(245,240,230,.4);margin:8px 0;text-align:center">Manual key: <code id="2faSecret" style="font-family:'JetBrains Mono',monospace;color:#C2A35A"></code></p>
+      <div class="field"><label>Enter code from app to confirm</label><input type="text" id="2faCode" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="000000"></div>
+      <button class="btn btn-primary" onclick="enable2FA()">Enable 2FA</button>
+      <p class="msg" id="2faMsg"></p>
+    </div>
+    <div id="2faRecovery" class="hidden">
+      <div class="recovery-box">
+        <p style="font-size:.72rem;color:#ef4444;margin-bottom:6px;font-weight:500">⚠ SAVE THIS RECOVERY TOKEN — YOU WILL NEVER SEE IT AGAIN</p>
+        <code id="recoveryToken"></code>
+        <p>This is the ONLY way to disable 2FA if you lose your device. Store it somewhere safe.</p>
+      </div>
+      <button class="btn btn-secondary" style="margin-top:12px" onclick="window.location.reload()">I've saved it — Continue</button>
+    </div>
+    <div id="2faDisable" class="hidden">
+      <p style="font-size:.72rem;color:rgba(245,240,230,.6);margin-bottom:12px">2FA is <span style="color:#34d399;font-weight:500">enabled</span>. To disable, enter your recovery token.</p>
+      <div class="field"><label>Recovery Token</label><input type="text" id="disableToken" placeholder="Enter your recovery token"></div>
+      <button class="btn btn-danger" onclick="disable2FA()">Disable 2FA</button>
+      <p class="msg" id="2faDisableMsg"></p>
+    </div>
+  </div>
+  <!-- ADMIN: USER MANAGEMENT -->
+  <div class="section hidden" id="adminSection">
+    <h2>User Management</h2>
+    <div id="userList"></div>
+    <div class="add-user-form">
+      <input type="text" id="newUsername" placeholder="Username">
+      <input type="password" id="newPassword" placeholder="Password (6+ chars)">
+      <select id="newRole"><option value="user">User</option><option value="admin">Admin</option></select>
+      <button class="btn btn-primary" onclick="addUser()">Add</button>
+    </div>
+    <p class="msg" id="adminMsg"></p>
+  </div>
+</div>
+<script>
+// === Auth check ===
+function getToken() { var m = document.cookie.match(/hk_token=([^;]+)/); return m ? m[1] : null; }
+var token = getToken();
+if (!token) { window.location.href = '/'; }
+function authHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }; }
+
+var currentUser = null;
+var currentRole = null;
+var setup2faSecret = null;
+
+// === Load user info ===
+fetch('/.hk/api/me', { headers: authHeaders() })
+  .then(function(r) { if (!r.ok) { window.location.href = '/'; } return r.json(); })
+  .then(function(d) {
+    currentUser = d.user;
+    currentRole = d.role;
+    // Show 2FA status
+    if (d.totp_enabled) {
+      document.getElementById('2faStatus').innerHTML = '<p style="font-size:.72rem;color:#34d399;margin-bottom:12px">✓ 2FA is enabled</p>';
+      document.getElementById('2faDisable').classList.remove('hidden');
+    } else {
+      document.getElementById('2faStatus').innerHTML = '<p style="font-size:.72rem;color:rgba(245,240,230,.6);margin-bottom:12px">2FA is not enabled.</p><button class="btn btn-secondary" onclick="start2FASetup()">Set up 2FA</button>';
+    }
+    // Show admin section
+    if (d.role === 'admin') {
+      document.getElementById('adminSection').classList.remove('hidden');
+      loadUsers();
+    }
+  });
+
+// === Change Password ===
+document.getElementById('pwForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var msg = document.getElementById('pwMsg');
+  var newPw = document.getElementById('pwNew').value;
+  if (newPw !== document.getElementById('pwConfirm').value) { msg.className = 'msg err'; msg.textContent = 'Passwords do not match'; return; }
+  fetch('/.hk/api/settings/password', { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ current: document.getElementById('pwCurrent').value, newPassword: newPw }) })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) { msg.className = 'msg ok'; msg.textContent = 'Password updated'; document.getElementById('pwForm').reset(); }
+      else { msg.className = 'msg err'; msg.textContent = d.error || 'Failed'; }
+    });
+});
+
+// === 2FA Setup ===
+function start2FASetup() {
+  fetch('/.hk/api/settings/2fa/setup', { headers: authHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        setup2faSecret = d.secret;
+        document.getElementById('2faQR').src = d.qr;
+        document.getElementById('2faSecret').textContent = d.secret;
+        document.getElementById('2faSetup').classList.remove('hidden');
+        document.getElementById('2faStatus').classList.add('hidden');
+      }
+    });
+}
+
+function enable2FA() {
+  var code = document.getElementById('2faCode').value;
+  var msg = document.getElementById('2faMsg');
+  fetch('/.hk/api/settings/2fa/enable', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ secret: setup2faSecret, code: code }) })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        document.getElementById('2faSetup').classList.add('hidden');
+        document.getElementById('recoveryToken').textContent = d.recovery_token;
+        document.getElementById('2faRecovery').classList.remove('hidden');
+      } else { msg.className = 'msg err'; msg.textContent = d.error || 'Invalid code'; }
+    });
+}
+
+function disable2FA() {
+  var rt = document.getElementById('disableToken').value;
+  var msg = document.getElementById('2faDisableMsg');
+  fetch('/.hk/api/settings/2fa/disable', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ recovery_token: rt }) })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) { msg.className = 'msg ok'; msg.textContent = '2FA disabled'; setTimeout(function(){ window.location.reload(); }, 1000); }
+      else { msg.className = 'msg err'; msg.textContent = d.error || 'Invalid token'; }
+    });
+}
+
+// === Admin: User Management ===
+function loadUsers() {
+  fetch('/.hk/api/admin/users', { headers: authHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.ok) return;
+      var html = '';
+      d.users.forEach(function(u) {
+        var roleClass = u.role === 'admin' ? 'admin' : '';
+        var badge2fa = u.totp_enabled ? '<span class="badge-2fa">2FA</span>' : '';
+        var actions = '';
+        if (u.name !== 'noah') {
+          var toggleRole = u.role === 'admin' ? 'user' : 'admin';
+          actions = '<button class="btn btn-secondary" style="font-size:.6rem;padding:4px 8px" onclick="toggleRole(\'' + u.name + '\',\'' + toggleRole + '\')">→ ' + toggleRole + '</button> ';
+          actions += '<button class="btn btn-danger" style="font-size:.6rem;padding:4px 8px" onclick="deleteUser(\'' + u.name + '\')">Delete</button>';
+        } else {
+          actions = '<span style="font-size:.6rem;color:rgba(245,240,230,.3)">Main Admin</span>';
+        }
+        html += '<div class="user-row"><span class="user-name">' + u.name + badge2fa + '</span><span class="user-role ' + roleClass + '">' + u.role + '</span>' + actions + '</div>';
+      });
+      document.getElementById('userList').innerHTML = html;
+    });
+}
+
+function addUser() {
+  var msg = document.getElementById('adminMsg');
+  var username = document.getElementById('newUsername').value;
+  var password = document.getElementById('newPassword').value;
+  var role = document.getElementById('newRole').value;
+  if (!username || password.length < 6) { msg.className = 'msg err'; msg.textContent = 'Username + password (6+) required'; return; }
+  fetch('/.hk/api/admin/users', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ username: username, password: password, role: role }) })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) { msg.className = 'msg ok'; msg.textContent = 'User added'; loadUsers(); document.getElementById('newUsername').value = ''; document.getElementById('newPassword').value = ''; }
+      else { msg.className = 'msg err'; msg.textContent = d.error || 'Failed'; }
+    });
+}
+
+function deleteUser(name) {
+  if (!confirm('Delete user "' + name + '"?')) return;
+  fetch('/.hk/api/admin/users/' + encodeURIComponent(name), { method: 'DELETE', headers: authHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) loadUsers();
+      else { document.getElementById('adminMsg').className = 'msg err'; document.getElementById('adminMsg').textContent = d.error || 'Failed'; }
+    });
+}
+
+function toggleRole(name, newRole) {
+  fetch('/.hk/api/admin/users/' + encodeURIComponent(name) + '/role', { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ role: newRole }) })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d.ok) loadUsers(); });
+}
+</script>
+</body>
+</html>

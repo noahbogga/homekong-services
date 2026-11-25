@@ -1,0 +1,7 @@
+tunnel: e328be0c-e8dc-4492-9d0a-a535491eac0e
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: tx.homekong.cc
+    service: http://172.18.0.4:3001
+  - service: http_status:404

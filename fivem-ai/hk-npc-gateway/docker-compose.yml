@@ -1,0 +1,12 @@
+services:
+  hk-npc-gateway:
+    build: .
+    container_name: hk-npc-gateway
+    restart: unless-stopped
+    ports:
+      - "3089:3089"
+    # config.json AND server.js are bind-mounted so edits only need a restart
+    # (or POST /reload for config), never a rebuild. node_modules stays in-image.
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./server.js:/app/server.js:ro

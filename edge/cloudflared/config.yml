@@ -1,0 +1,33 @@
+tunnel: d91a012a-aa5f-470b-9947-aa47149f0a1c
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: homekong.online
+    service: http://172.18.0.7:80
+  - hostname: www.homekong.online
+    service: http://172.18.0.7:80
+  - hostname: join.homekong.online
+    service: http://172.18.0.9:80
+  - hostname: debug.homekong.online
+    service: http://172.18.0.10:80
+  - hostname: status.homekong.cc
+    service: http://172.18.0.14:3001
+  - hostname: media.homekong.cc
+    service: http://172.18.0.17:80
+  - hostname: mgmt.homekong.cc
+    service: http://172.19.0.5:3001
+  - hostname: image.homekong.cc
+    service: http://nginx:80
+  - hostname: cdn.homekong.cc
+    service: http://nginx:80
+  - hostname: drive.homekong.cc
+    service: http://172.18.0.12:8080
+  - hostname: tx.homekong.cc
+    service: http://172.18.0.4:3001
+  - hostname: txdebug.homekong.cc
+    service: http://172.18.0.10:80
+  - hostname: aether.xxx
+    service: http://192.168.50.228:8084
+  - hostname: games.homekong.online
+    service: http://192.168.50.247:4200
+  - service: http_status:404

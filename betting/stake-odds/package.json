@@ -1,0 +1,19 @@
+{
+  "name": "stake-odds",
+  "version": "1.0.0",
+  "description": "Stake.com odds scraper — feeds hk-odds-engine via /odds/ingest",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "4.18.2",
+    "playwright": "1.44.1",
+    "playwright-extra": "4.3.6",
+    "puppeteer-extra-plugin-stealth": "2.11.2",
+    "node-fetch": "3.3.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

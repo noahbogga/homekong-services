@@ -1,0 +1,14 @@
+{
+  "port": 8080,
+  "baseURL": "",
+  "address": "0.0.0.0",
+  "log": "stdout",
+  "database": "/database/filebrowser.db",
+  "root": "/srv",
+  "branding": {
+    "name": "HOMEKONG Media",
+    "files": "/branding",
+    "disableExternal": true,
+    "color": "#1e3a5f"
+  }
+}

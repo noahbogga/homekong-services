@@ -1,0 +1,245 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+    - 8081:80
+    volumes:
+    - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    - ./nginx/custom.css:/etc/nginx/custom/custom.css:ro
+    - ./nginx/logo.png:/etc/nginx/custom/logo.png:ro
+    - ./nginx/header-logo.png:/etc/nginx/custom/header-logo.png:ro
+    - ./nginx/login.html:/etc/nginx/custom/login.html:ro
+    - ./filebrowser/data/Media/sky-assets:/srv/cdn:ro
+    restart: unless-stopped
+    depends_on:
+    - zipline
+  zipline:
+    image: ghcr.io/diced/zipline:latest
+    container_name: zipline
+    expose:
+    - '3000'
+    environment:
+      CORE_SECRET: CHANGE_ME
+      DATABASE_URL: postgres://USER:CHANGE_ME@zipline_postgres:5432/zipline
+      CORE_HOST: 0.0.0.0
+      CORE_PORT: '3000'
+      CORE_DATABASE_URL: postgres://USER:CHANGE_ME@zipline_postgres:5432/zipline
+      CORE_RETURN_HTTPS: 'true'
+      DATASOURCE_TYPE: local
+      DATASOURCE_LOCAL_DIRECTORY: /uploads
+    volumes:
+    - ./filebrowser/data/Media/.imagehost:/uploads
+    restart: unless-stopped
+    depends_on:
+      zipline_postgres:
+        condition: service_healthy
+  zipline_postgres:
+    image: postgres:17-alpine
+    container_name: zipline_postgres
+    environment:
+      POSTGRES_DB: zipline
+      POSTGRES_USER: CHANGE_ME
+      POSTGRES_PASSWORD: CHANGE_ME
+    volumes:
+    - zipline-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U zipline -d zipline
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    ports:
+    - 3001:3001
+    volumes:
+    - kuma-data:/app/data
+    restart: always
+  fivem-landing:
+    image: nginx:alpine
+    container_name: fivem-landing
+    ports:
+    - 8082:80
+    volumes:
+    - ./fivem-landing:/usr/share/nginx/html:ro
+    restart: unless-stopped
+  homekong-web:
+    image: nginx:alpine
+    container_name: homekong-web
+    ports:
+    - 8083:80
+    volumes:
+    - ./homekong-web:/usr/share/nginx/html:ro
+    restart: unless-stopped
+  filebrowser-app:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser-app
+    environment:
+    - UMASK=000
+    expose:
+    - '8080'
+    volumes:
+    - ./filebrowser/data:/srv
+    - /mnt/personal:/srv/.userdata
+    - ./filebrowser/db:/database
+    - ./filebrowser/filebrowser.json:/config/settings.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - -q
+      - --spider
+      - http://localhost:8080/health
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  media-frontend:
+    image: nginx:alpine
+    container_name: media-frontend
+    ports:
+    - 8084:80
+    volumes:
+    - ./media-app/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    - ./media-app/index.html:/app/index.html:ro
+    - ./media-app/manifest.json:/app/manifest.json:ro
+    - ./media-app/assets:/app/assets:ro
+    - ./media-app/js:/app/js:ro
+    restart: unless-stopped
+    depends_on:
+    - filebrowser-app
+    - share-service
+  share-service:
+    image: node:22-alpine
+    container_name: share-service
+    working_dir: /app
+    command: node server.js
+    volumes:
+    - ./share-service/server.js:/app/server.js:ro
+    - ./share-service/data:/data
+    - ./filebrowser/data:/srv
+    - /mnt/personal:/srv/.userdata
+    - ./media-app/knowledge:/app/knowledge:ro
+    expose:
+    - '3000'
+    restart: unless-stopped
+  upload-service:
+    image: node:22-alpine
+    container_name: upload-service
+    working_dir: /app
+    command: node server.js
+    volumes:
+    - ./media-app/upload-server.js:/app/server.js:ro
+    - ./filebrowser/data:/srv
+    - /mnt/personal:/srv/.userdata
+    expose:
+    - '3007'
+    restart: unless-stopped
+    depends_on:
+    - filebrowser-app
+  txadmin-proxy:
+    image: nginx:alpine
+    container_name: txadmin-proxy
+    ports:
+    - 8085:80
+    volumes:
+    - ./txadmin/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    - ./txadmin/login.html:/custom/login.html:ro
+    - ./txadmin/logo.png:/custom/logo.png:ro
+    - ./txadmin/services.html:/custom/services.html:ro
+    - ./txadmin/topbar-snippet.conf:/custom/topbar-snippet.conf:ro
+    - ./txadmin/manifest.json:/custom/manifest.json:ro
+    restart: unless-stopped
+  sftpgo:
+    image: drakkan/sftpgo:latest
+    container_name: sftpgo
+    ports:
+    - 8090:8080
+    - 2022:2022
+    - 9443:9443
+    - 8444:8444
+    volumes:
+    - sftpgo-data:/srv/sftpgo
+    - ./filebrowser/data:/data
+    environment:
+    - SFTPGO_HTTPD__BINDINGS__0__PORT=8080
+    - SFTPGO_HTTPD__BINDINGS__0__ADDRESS=0.0.0.0
+    - SFTPGO_SFTPD__BINDINGS__0__PORT=2022
+    - SFTPGO_DATA_PROVIDER__DRIVER=sqlite
+    - SFTPGO_DATA_PROVIDER__NAME=/srv/sftpgo/sftpgo.db
+    - SFTPGO_WEBDAVD__BINDINGS__0__PORT=9443
+    - SFTPGO_WEBDAVD__BINDINGS__0__ENABLE_HTTPS=true
+    - SFTPGO_WEBDAVD__BINDINGS__0__CERTIFICATE_FILE=/srv/sftpgo/certs/cert.pem
+    - SFTPGO_WEBDAVD__BINDINGS__0__CERTIFICATE_KEY_FILE=/srv/sftpgo/certs/key.pem
+    - SFTPGO_WEBDAVD__BINDINGS__1__PORT=8444
+    - SFTPGO_WEBDAVD__BINDINGS__1__ENABLE_HTTPS=false
+    restart: unless-stopped
+  search-service:
+    image: node:22-alpine
+    container_name: search-service
+    working_dir: /app
+    command: node server.js
+    volumes:
+    - ./search-service/server.js:/app/server.js:ro
+    - ./filebrowser/data:/srv
+    - /mnt/personal:/srv/.userdata
+    - ./media-app/knowledge:/app/knowledge:ro
+    restart: unless-stopped
+  resolver-service:
+    image: resolver-service:latest
+    container_name: resolver-service
+    volumes:
+    - ./filebrowser/data:/srv
+    - /mnt/personal:/srv/.userdata
+    - ./media-app/resolver-server.js:/app/server.js:ro
+    - ./media-app/cookies:/app/cookies
+    - ./media-app/gallery-dl.conf:/app/gallery-dl.conf:ro
+    expose:
+    - '3003'
+    restart: unless-stopped
+  browser-service:
+    image: browser-service:latest
+    container_name: browser-service
+    volumes:
+    - ./media-app/browser-server.js:/app/server.js:ro
+    expose:
+    - '3004'
+    restart: unless-stopped
+    shm_size: 512mb
+  cfg-editor:
+    image: node:22-alpine
+    container_name: cfg-editor
+    working_dir: /app
+    command: node server.js
+    expose:
+    - '3009'
+    volumes:
+    - ./media-app/cfg-editor.js:/app/server.js:ro
+    - ./filebrowser/data:/srv
+    restart: unless-stopped
+  fivem-ai-api:
+    build: ./fivem-ai-api
+    container_name: fivem-ai-api
+    restart: unless-stopped
+    ports:
+    - 3088:3088
+  phone-upload:
+    image: node:22-alpine
+    container_name: phone-upload
+    working_dir: /app
+    command: node server.js
+    volumes:
+    - ./phone-upload/server.js:/app/server.js:ro
+    ports:
+    - "3090:3090"
+    restart: unless-stopped
+    depends_on:
+    - zipline
+volumes:
+  zipline-data: null
+  kuma-data: null
+  sftpgo-data: null

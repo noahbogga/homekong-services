@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0C1838">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<title>HOMEKONG - File Manager</title>
+<link rel="icon" type="image/png" href="/assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        hk: { bg: '#0a0e1a', light: 'rgba(15,20,35,0.8)', card: 'rgba(255,255,255,0.03)' },
+        gold: { DEFAULT: '#C2A35A', dim: 'rgba(194,163,90,0.4)', glow: 'rgba(194,163,90,0.1)' },
+        cream: { DEFAULT: '#e8edf5', dim: 'rgba(232,237,245,0.5)' },
+        danger: '#ef4444',
+        success: '#22c55e',
+        info: '#60a5fa',
+        warn: '#f59e0b',
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        head: ['Inter', 'sans-serif'],
+      },
+    }
+  }
+}
+</script>
+<style>
+/* Glass/Acrylic theme */
+body { background: #0a0e1a; }
+::-webkit-scrollbar { width: 6px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+#sidebar-tree::-webkit-scrollbar { width: 4px; }
+#sidebar-tree::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+#monaco-container { width: 100%; height: 100%; }
+select { background-color: rgba(15,20,35,0.9) !important; color: #e8edf5 !important; }
+select option { background: #0f1423; color: #e8edf5; }
+@keyframes fadeIn { from { opacity:0; transform:translateX(-50%) translateY(8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+#toast.show { animation: fadeIn .2s; }
+/* Sidebar particle canvas */
+#sidebar-bg { position:absolute; inset:0; pointer-events:none; z-index:0; }
+/* Tree drag-over glow */
+.tree-drag-over { outline: 2px dashed #60a5fa; outline-offset: -2px; background: rgba(96,165,250,0.08); box-shadow: 0 0 10px rgba(96,165,250,0.15); }
+/* File item drag-over glow */
+.item-drag-over { outline: 2px dashed #60a5fa; background: rgba(96,165,250,0.08) !important; box-shadow: 0 0 12px rgba(96,165,250,0.15); }
+.touch-hover { outline: 2px dashed #60a5fa; background: rgba(96,165,250,0.08) !important; box-shadow: 0 0 12px rgba(96,165,250,0.15); }
+/* Sidebar tree expand animation */
+@keyframes tree-expand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tree-expand-anim { animation: tree-expand 0.2s ease-out; }
+/* Breadcrumb shimmer animation */
+@keyframes breadcrumb-shimmer {
+  0% { opacity:0; background-position: -100% 0; }
+  15% { opacity:1; }
+  50% { opacity:0.7; background-position: 0% 0; }
+  65% { opacity:1; }
+  100% { opacity:0; background-position: 100% 0; }
+}
+#breadcrumb-bar.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, rgba(96,165,250,0.06) 30%, rgba(96,165,250,0.12) 50%, rgba(96,165,250,0.06) 70%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(194,163,90,0.12) 30%, rgba(194,163,90,0.25) 50%, rgba(194,163,90,0.12) 70%, transparent 100%);
+  background-size: 100% 100%;
+  animation: breadcrumb-shimmer 0.6s ease-in-out forwards;
+  border-radius: inherit;
+}
+/* Block Android long-press context menu */
+.file-item { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* Status bar light animations */
+@keyframes status-blink-fast { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+@keyframes status-blink-slow { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+#status-light.blink-fast { animation: status-blink-fast 0.4s ease-in-out infinite; }
+#status-light.blink-slow { animation: status-blink-fast 1s ease-in-out infinite; }
+#status-light.pulse { animation: status-blink-slow 2s ease-in-out infinite; }
+/* Header horizontal scroll hide */
+#header::-webkit-scrollbar { display: none; }
+#header { scrollbar-width: none; }
+/* Action bar scroll hide */
+.actions-scroll::-webkit-scrollbar { display: none; }
+.actions-scroll { scrollbar-width: none; }
+/* Toolbar scroll hide */
+#toolbar::-webkit-scrollbar { display: none; }
+#toolbar { scrollbar-width: none; }
+#lasso-rect {
+  position: fixed;
+  border: 1px solid rgba(194,163,90,0.7);
+  background: rgba(194,163,90,0.08);
+  pointer-events: none;
+  z-index: 9000;
+}
+body.lasso-active, body.lasso-active * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: crosshair !important;
+}
+  display: none;
+}
+</style>
+</head>
+<body class="text-cream font-sans min-h-screen overflow-x-hidden">
+<!-- LOGIN -->
+<div id="login-view" class="flex items-center justify-center min-h-screen">
+  <div class="w-full max-w-[360px] px-8 py-10 text-center bg-[rgba(15,20,35,0.6)] backdrop-blur-xl rounded-2xl border border-white/[.06]">
+    <img src="/assets/logo.png" alt="HOMEKONG" class="w-16 h-16 rounded-[18%] mx-auto mb-4">
+    <h1 class="font-head text-xl tracking-[.12em] mb-1">HOMEKONG</h1>
+    <p class="text-[.7rem] tracking-[.2em] uppercase text-gold/80 mb-8">Media Portal</p>
+    <form id="loginForm">
+      <div class="mb-4 text-left">
+        <label class="block text-[.65rem] tracking-[.12em] uppercase text-cream-dim mb-1">Username</label>
+        <input type="text" id="login-user" autocomplete="username" required class="w-full px-3 py-2.5 bg-white/[.06] border border-gold/25 rounded text-cream text-sm font-sans outline-none focus:border-gold/60 transition">
+      </div>
+      <div class="mb-4 text-left">
+        <label class="block text-[.65rem] tracking-[.12em] uppercase text-cream-dim mb-1">Password</label>
+        <input type="password" id="login-pass" autocomplete="current-password" required class="w-full px-3 py-2.5 bg-white/[.06] border border-gold/25 rounded text-cream text-sm font-sans outline-none focus:border-gold/60 transition">
+      </div>
+      <button type="submit" class="w-full py-2.5 bg-gold text-[#1a1306] rounded font-semibold text-sm font-head tracking-[.12em] hover:bg-[#d4b56a] transition">SIGN IN</button>
+      <p id="login-error" class="text-danger text-xs mt-2 min-h-[16px]"></p>
+    </form>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-view" class="hidden flex-col h-[100dvh]">
+  <!-- HEADER -->
+  <div id="header" class="flex items-center gap-2 sm:gap-4 px-3 sm:px-6 py-2 sm:py-3 bg-[rgba(10,14,26,0.85)] backdrop-blur-lg border-b border-white/[.06] sticky top-0 z-[100] overflow-x-auto">
+    <img src="/assets/logo.png" alt="HK" class="w-7 h-7 sm:w-10 sm:h-10 rounded-[12%] flex-shrink-0">
+    <h1 class="hidden sm:block font-sans text-sm sm:text-base tracking-[.05em] font-medium flex-1 whitespace-nowrap text-white/80">File Manager</h1>
+    <div class="flex items-center gap-1.5 sm:gap-2 ml-auto flex-shrink-0">
+      <button id="discard-btn" onclick="discardAll()" class="hidden px-2 sm:px-3 py-1.5 sm:py-2 text-[.6rem] sm:text-[.65rem] rounded-lg border border-red-400/20 text-red-400 bg-white/[.03] backdrop-blur-sm hover:bg-red-400/10 transition-all whitespace-nowrap">✕ Discard (0)</button>
+      <a id="panel-btn" href="https://tx.homekong.cc" class="header-btn px-2 sm:px-3 py-1.5 sm:py-2 text-[.6rem] sm:text-[.65rem] rounded-lg border border-white/[.08] text-white/60 bg-white/[.03] backdrop-blur-sm hover:bg-white/[.07] hover:text-white/90 transition-all whitespace-nowrap">Panel</a>
+      <button onclick="openResolver()" class="header-btn px-2 sm:px-3 py-1.5 sm:py-2 text-[.6rem] sm:text-[.65rem] rounded-lg border border-yellow-400/15 text-yellow-400/70 bg-white/[.02] backdrop-blur-sm hover:bg-yellow-400/10 hover:text-yellow-400 transition-all whitespace-nowrap">⚡ Resolve</button>
+      <button onclick="logout()" class="header-btn px-2 sm:px-3 py-1.5 sm:py-2 text-[.6rem] sm:text-[.65rem] rounded-lg border border-red-400/15 text-red-400/70 bg-white/[.02] backdrop-blur-sm hover:bg-red-400/10 hover:text-red-400 transition-all whitespace-nowrap">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Breadcrumb bar (ALWAYS visible) -->
+  <div id="breadcrumb-bar" class="flex items-center px-3 sm:px-4 py-1.5 gap-2 border-b border-white/[.04] bg-[rgba(12,16,28,0.7)] backdrop-blur-md sticky top-[44px] sm:top-[52px] z-[95] flex-shrink-0 relative overflow-hidden">
+    <button id="sidebar-toggle-btn" onclick="toggleSidebar()" class="bg-white/[.03] border border-white/[.08] text-white/50 px-2 py-1 rounded-lg text-xs cursor-pointer hover:bg-white/[.07] hover:text-white/80 flex-shrink-0 transition backdrop-blur-sm">☰</button>
+    <div id="breadcrumb-inline" class="text-[.72rem] text-white/50 flex items-center gap-1 flex-wrap flex-1 overflow-hidden"></div>
+    <div class="flex items-center gap-1 flex-shrink-0">
+      <button onclick="openUploadModal()" class="px-2 py-1 text-[.6rem] rounded-lg border border-emerald-400/15 text-emerald-400/70 bg-white/[.02] backdrop-blur-sm hover:bg-emerald-400/10 hover:text-emerald-400 transition whitespace-nowrap">⬆ Upload</button>
+      <button onclick="openCreateNewModal()" id="new-btn" class="px-2 py-1 text-[.6rem] rounded-lg border border-blue-400/15 text-blue-400/70 bg-white/[.02] backdrop-blur-sm hover:bg-blue-400/10 hover:text-blue-400 transition whitespace-nowrap">+ New</button>
+      <button id="view-toggle" onclick="toggleView()" class="px-2 py-1 text-[.6rem] rounded-lg border border-white/[.08] text-white/50 bg-white/[.02] backdrop-blur-sm hover:bg-white/[.07] hover:text-white/80 transition whitespace-nowrap">⊞</button>
+      <button onclick="openSearch()" class="px-2 py-1 text-[.6rem] rounded-lg border border-white/[.08] text-white/50 bg-white/[.02] backdrop-blur-sm hover:bg-white/[.07] hover:text-white/80 transition whitespace-nowrap">🔍</button>
+    </div>
+  </div>
+
+  <!-- LAYOUT -->
+  <div id="app-layout" class="flex flex-1 overflow-hidden relative">
+    <!-- Sidebar backdrop (mobile only) -->
+    <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-black/50 z-[85] md:hidden" onclick="toggleSidebar()"></div>
+    <!-- Sidebar: fixed on mobile, relative on desktop (pushes content) -->
+    <div id="sidebar" class="bg-[rgba(12,16,28,0.6)] backdrop-blur-lg border-r border-white/[.05] flex-shrink-0 flex flex-col overflow-hidden z-[90] transition-all duration-300 ease-in-out">
+      <canvas id="sidebar-bg"></canvas>
+      <div id="sidebar-tree" class="flex-1 overflow-y-auto py-1.5 relative z-[1] flex flex-col"></div>
+    </div>
+
+    <!-- Main area -->
+    <div id="main-area" class="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div id="file-list" class="flex-1 overflow-y-auto px-3 sm:px-5 py-2 pb-14 sm:pb-20"></div>
+    </div>
+  </div>
+
+  <!-- Status Bar (full width, below sidebar+content) -->
+  <div id="status-bar" class="flex items-center px-2 sm:px-3 py-0.5 sm:py-1 bg-[rgba(8,12,22,0.9)] backdrop-blur-md border-t border-white/[.04] text-[.55rem] sm:text-[.65rem] gap-1.5 sm:gap-2 flex-shrink-0 z-[100] select-none">
+        <div class="flex items-center gap-1.5 flex-1 min-w-0 cursor-pointer" onclick="treeCache={};navigate(currentPath);" title="Click to refresh">
+          <span id="status-light" class="w-2 h-2 rounded-full bg-success flex-shrink-0"></span>
+          <span id="status-msg" class="text-cream-dim truncate">Ready</span>
+          <button id="status-dismiss" onclick="dismissStatus()" class="hidden px-1.5 py-0.5 text-[.55rem] rounded border border-cream-dim/30 text-cream-dim hover:bg-white/10 transition flex-shrink-0">✕</button>
+          <button id="status-report" onclick="reportStatus()" class="hidden px-1.5 py-0.5 text-[.55rem] rounded border border-danger/40 text-danger hover:bg-danger/10 transition flex-shrink-0">Report</button>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3 text-cream-dim flex-shrink-0">
+          <span id="status-ip" class="hidden sm:inline"></span>
+          <span id="status-clock"></span>
+        </div>
+      </div>
+</div>
+
+  <!-- Fixed bottom toolbar (grid multi-select) -->
+  <div id="toolbar" class="fixed bottom-0 left-0 right-0 md:left-[10%] md:right-[10%] md:bottom-5 md:w-[80%] md:mx-auto hidden bg-[rgba(15,20,35,0.9)] backdrop-blur-xl border border-white/[.08] md:rounded-xl px-2 py-1.5 md:px-3 md:py-2 gap-1.5 z-[200] shadow-[0_8px_32px_rgba(0,0,0,.5)] overflow-x-auto whitespace-nowrap">
+    <button class="act-btn inline-flex items-center gap-1 px-2 py-1.5 rounded text-[.65rem] font-semibold border border-success text-success bg-success/[.15] hover:bg-success/25 transition flex-shrink-0" onclick="downloadSelected()">⬇ Download</button>
+    <button class="act-btn inline-flex items-center gap-1 px-2 py-1.5 rounded text-[.65rem] font-semibold border border-gold text-gold bg-gold/[.15] hover:bg-gold/25 transition flex-shrink-0" onclick="shareSelected()">🔗 Share</button>
+    <button class="act-btn inline-flex items-center gap-1 px-2 py-1.5 rounded text-[.65rem] font-semibold border border-white/30 text-cream bg-white/10 hover:bg-white/[.18] transition flex-shrink-0" onclick="renameSelected()">✏ Rename</button>
+    <button class="act-btn inline-flex items-center gap-1 px-2 py-1.5 rounded text-[.65rem] font-semibold border border-emerald-400 text-emerald-400 bg-emerald-400/[.15] hover:bg-emerald-400/25 transition flex-shrink-0" id="tb-paste" onclick="confirmPaste()" style="display:none">📋 Paste</button>
+    <button class="act-btn inline-flex items-center gap-1 px-2 py-1.5 rounded text-[.65rem] font-semibold border border-cyan-400 text-cyan-400 bg-cyan-400/[.15] hover:bg-cyan-400/25 transition flex-shrink-0" onclick="copySelected()">⧉ Copy</button>
+    <button class="act-btn inline-flex items-center gap-1 px-2 py-1.5 rounded text-[.65rem] font-semibold border border-amber-400 text-amber-400 bg-amber-400/[.15] hover:bg-amber-400/25 transition flex-shrink-0" onclick="cutSelected()">✂ Cut</button>
+    <button class="act-btn inline-flex items-center gap-1 px-2 py-1.5 rounded text-[.65rem] font-semibold border border-yellow-400 text-yellow-400 bg-yellow-400/[.15] hover:bg-yellow-400/25 transition flex-shrink-0" onclick="moveSelected()">↪ Move</button>
+    <button class="act-btn inline-flex items-center gap-1 px-2 py-1.5 rounded text-[.65rem] font-semibold border border-danger text-danger bg-danger/[.12] hover:bg-danger/[.22] transition flex-shrink-0" onclick="deleteSelected()">Delete</button>
+    <button class="act-btn inline-flex items-center gap-1 px-2 py-1.5 rounded text-[.65rem] font-semibold border border-purple-400 text-purple-400 bg-purple-400/[.12] hover:bg-purple-400/[.22] transition flex-shrink-0" id="tb-undo" onclick="undoLast()" style="display:none">↩ Undo</button>
+    <button class="act-btn inline-flex items-center gap-1 px-2 py-1.5 rounded text-[.65rem] font-semibold border border-purple-400 text-purple-400 bg-purple-400/[.12] hover:bg-purple-400/[.22] transition flex-shrink-0" id="tb-redo" onclick="redoLast()" style="display:none">↪ Redo</button>
+    <button class="act-btn inline-flex items-center gap-1 px-1.5 py-1.5 rounded text-[.65rem] font-semibold border border-info text-info bg-info/[.15] hover:bg-info/25 transition flex-shrink-0" onclick="infoSelected()">ℹ</button>
+    <button class="act-btn md:hidden inline-flex items-center gap-1 px-1.5 py-1.5 rounded text-[.65rem] font-semibold border border-white/20 text-white/60 bg-white/[.04] hover:bg-white/[.08] transition flex-shrink-0" onclick="_showContextMenuFromToolbar()">⋮</button>
+  </div>
+</div>
+
+
+<!-- MODALS -->
+<!-- Upload Modal -->
+<div class="modal-overlay fixed inset-0 bg-black/70 z-[9999] hidden items-center justify-center" id="upload-modal">
+  <div class="bg-[rgba(15,20,35,0.75)] backdrop-blur-xl border border-white/[.08] rounded-xl p-6 w-[90%] max-w-[440px] max-h-[80vh] overflow-y-auto relative">
+    <h2 class="font-sans font-medium text-sm text-white/80 mb-3">Upload Files</h2>
+    <button class="modal-close absolute top-2.5 right-3.5 bg-transparent border-none text-cream-dim text-xl cursor-pointer" onclick="closeUpload()">&times;</button>
+    <div class="mb-3">
+      <label class="block text-[.6rem] uppercase tracking-wider text-white/40 mb-1">Upload to</label>
+      <div class="flex items-center gap-1">
+        <div id="upload-location" class="flex-1 px-3 py-2 bg-white/[.04] border border-white/[.08] rounded-lg text-white/90 text-xs font-sans overflow-hidden text-ellipsis whitespace-nowrap"></div>
+        <button onclick="changeUploadLocation()" class="px-2 py-2 bg-white/[.06] border border-white/[.1] rounded-lg text-[.6rem] text-white/80 hover:bg-white/[.1] transition" title="Change location">📂</button>
+      </div>
+    </div>
+    <div id="upload-zone" class="border-2 border-dashed border-white/[.12] rounded-xl py-6 px-4 text-center cursor-pointer transition-all hover:border-white/[.25] hover:bg-white/[.04] mb-3">
+      <div class="text-3xl"><img src="/assets/folder.png" class="w-10 h-10 mx-auto"></div>
+      <p class="text-white/40 text-xs mt-1.5">Click to select files · Right-click for folders · Or drag here</p>
+    </div>
+    <div id="upload-file-list" class="max-h-[160px] overflow-y-auto mb-2.5"></div>
+    <button class="w-full py-2.5 bg-white/[.06] border border-white/[.1] text-white/80 rounded-lg font-semibold text-sm cursor-pointer hover:bg-white/[.1] disabled:opacity-50 disabled:cursor-not-allowed transition" id="upload-go" onclick="startUpload()" disabled>Upload</button>
+    <input type="file" id="file-input" multiple hidden>
+    <input type="file" id="folder-input" webkitdirectory hidden>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay fixed inset-0 bg-black/70 z-[9999] hidden items-center justify-center" id="delete-modal">
+  <div class="bg-[rgba(15,20,35,0.75)] backdrop-blur-xl border border-white/[.08] rounded-xl p-6 w-[90%] max-w-[440px] relative">
+    <h2 class="font-sans font-medium text-sm text-white/80 mb-3">Confirm Delete</h2>
+    <button class="modal-close absolute top-2.5 right-3.5 bg-transparent border-none text-cream-dim text-xl cursor-pointer" onclick="closeDelete()">&times;</button>
+    <div class="text-red-400 text-xs mb-2.5 p-2 bg-red-400/10 border border-red-400/20 rounded-lg whitespace-pre-line" id="delete-warning"></div>
+    <button class="w-full py-2.5 bg-red-400/10 border border-red-400/20 text-red-400 rounded-lg font-semibold cursor-pointer hover:bg-red-400/20 transition" id="delete-confirm" onclick="confirmDelete()">Delete Permanently</button>
+    <button class="w-full py-2.5 mt-2 bg-white/[.03] border border-white/[.06] text-white/40 rounded-lg font-semibold cursor-pointer hover:bg-white/[.06] transition" onclick="closeDelete()">Cancel</button>
+  </div>
+</div>
+
+<!-- Rename Modal -->
+<div class="modal-overlay fixed inset-0 bg-black/70 z-[9999] hidden items-center justify-center" id="rename-modal">
+  <div class="bg-[rgba(15,20,35,0.75)] backdrop-blur-xl border border-white/[.08] rounded-xl p-6 w-[90%] max-w-[440px] relative">
+    <h2 class="font-sans font-medium text-sm text-white/80 mb-3">Rename</h2>
+    <button class="modal-close absolute top-2.5 right-3.5 bg-transparent border-none text-cream-dim text-xl cursor-pointer" onclick="closeRename()">&times;</button>
+    <div id="rename-list" class="mb-3"></div>
+    <button class="w-full py-2.5 bg-white/[.06] border border-white/[.1] text-white/80 rounded-lg font-semibold cursor-pointer hover:bg-white/[.1] transition" onclick="confirmRename()">Rename</button>
+  </div>
+</div>
+
+<!-- Move Modal -->
+<div class="modal-overlay fixed inset-0 bg-black/70 z-[9999] hidden items-center justify-center" id="move-modal">
+  <div class="bg-[rgba(15,20,35,0.75)] backdrop-blur-xl border border-white/[.08] rounded-xl p-6 w-[90%] max-w-[440px] relative">
+    <h2 class="font-sans font-medium text-sm text-white/80 mb-3">Move To</h2>
+    <button class="modal-close absolute top-2.5 right-3.5 bg-transparent border-none text-cream-dim text-xl cursor-pointer" onclick="closeMove()">&times;</button>
+    <div id="move-breadcrumb" class="text-[.7rem] text-white/40 mb-2.5"></div>
+    <div id="move-folder-list" class="max-h-[220px] overflow-y-auto mb-2.5"></div>
+    <button class="w-full py-2.5 bg-white/[.06] border border-white/[.1] text-white/80 rounded-lg font-semibold cursor-pointer hover:bg-white/[.1] transition" onclick="confirmMove()">Move Here</button>
+  </div>
+</div>
+
+<!-- Move Confirm Modal -->
+<div class="modal-overlay fixed inset-0 bg-black/70 z-[9999] hidden items-center justify-center" id="move-confirm-modal">
+  <div class="bg-[rgba(15,20,35,0.75)] backdrop-blur-xl border border-white/[.08] rounded-xl p-6 w-[90%] max-w-[440px] relative">
+    <h2 class="font-sans font-medium text-sm text-white/80 mb-3">Confirm Move</h2>
+    <button class="modal-close absolute top-2.5 right-3.5 bg-transparent border-none text-cream-dim text-xl cursor-pointer" onclick="closeDragConfirm()">&times;</button>
+    <div class="text-xs p-2.5 bg-white/[.04] border border-white/[.08] rounded-lg mb-3 text-white/70" id="move-confirm-detail"></div>
+    <button class="w-full py-2.5 bg-white/[.06] border border-white/[.1] text-white/80 rounded-lg font-semibold cursor-pointer hover:bg-white/[.1] transition" id="move-confirm-exec-btn" onclick="executeMoveConfirm()">Move</button>
+    <button class="w-full py-2.5 mt-2 bg-white/[.03] border border-white/[.06] text-white/40 rounded-lg font-semibold cursor-pointer hover:bg-white/[.06] transition" id="move-confirm-cancel-btn" onclick="closeDragConfirm()">Cancel</button>
+  </div>
+</div>
+
+<!-- Info Modal -->
+<div class="modal-overlay fixed inset-0 bg-black/70 z-[9999] hidden items-center justify-center" id="info-modal">
+  <div class="bg-[rgba(15,20,35,0.75)] backdrop-blur-xl border border-white/[.08] rounded-xl p-6 w-[90%] max-w-[440px] relative">
+    <h2 class="font-sans font-medium text-sm text-white/80 mb-3">File Info</h2>
+    <button class="modal-close absolute top-2.5 right-3.5 bg-transparent border-none text-cream-dim text-xl cursor-pointer" onclick="closeInfo()">&times;</button>
+    <div id="info-content"></div>
+  </div>
+</div>
+
+<!-- Custom Prompt Modal (replaces browser prompt()) -->
+<div class="modal-overlay fixed inset-0 bg-black/70 z-[9999] hidden items-center justify-center" id="prompt-modal">
+  <div class="bg-[rgba(15,20,35,0.75)] backdrop-blur-xl border border-white/[.08] rounded-xl p-6 w-[90%] max-w-[400px] relative">
+    <h2 class="font-sans font-medium text-sm text-white/80 mb-3" id="prompt-title">Input</h2>
+    <button class="modal-close absolute top-2.5 right-3.5 bg-transparent border-none text-cream-dim text-xl cursor-pointer" onclick="closePromptModal()">&times;</button>
+    <input type="text" id="prompt-input" class="w-full px-3 py-2.5 bg-white/[.04] border border-white/[.08] rounded-lg text-white/90 text-sm font-sans outline-none focus:border-white/[.2] transition mb-3" placeholder="">
+    <div class="flex gap-2">
+      <button class="flex-1 py-2.5 bg-white/[.06] border border-white/[.1] text-white/80 rounded-lg font-semibold cursor-pointer hover:bg-white/[.1] text-sm transition" id="prompt-ok" onclick="resolvePrompt()">OK</button>
+      <button class="flex-1 py-2.5 bg-white/[.03] border border-white/[.06] text-white/40 rounded-lg font-semibold cursor-pointer hover:bg-white/[.06] text-sm transition" onclick="closePromptModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create New Modal -->
+<div class="modal-overlay fixed inset-0 bg-black/70 z-[9999] hidden items-center justify-center" id="create-new-modal">
+  <div class="bg-[rgba(15,20,35,0.75)] backdrop-blur-xl border border-white/[.08] rounded-xl p-6 w-[90%] max-w-[440px] relative">
+    <h2 class="font-sans font-medium text-sm text-white/80 mb-4">Create New</h2>
+    <button class="modal-close absolute top-2.5 right-3.5 bg-transparent border-none text-cream-dim text-xl cursor-pointer" onclick="closeCreateNewModal()">&times;</button>
+    <div class="mb-3">
+      <label class="block text-[.6rem] uppercase tracking-wider text-white/40 mb-1">Type</label>
+      <div id="create-new-types" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        <button onclick="selectNewType('folder')" data-type="folder" class="create-type-btn flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-white/[.08] text-xs text-white/80 hover:bg-white/[.06] transition"><img src="/assets/folder.png" class="w-4 h-4">Folder</button>
+        <button onclick="selectNewType('txt')" data-type="txt" class="create-type-btn flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-white/[.08] text-xs text-white/80 hover:bg-white/[.06] transition"><span>📄</span>Text</button>
+        <button onclick="selectNewType('json')" data-type="json" class="create-type-btn flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-white/[.08] text-xs text-white/80 hover:bg-white/[.06] transition"><span>⚙️</span>JSON</button>
+        <button onclick="selectNewType('lua')" data-type="lua" class="create-type-btn flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-white/[.08] text-xs text-white/80 hover:bg-white/[.06] transition"><span>🔧</span>Lua</button>
+        <button onclick="selectNewType('zip')" data-type="zip" class="create-type-btn flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-white/[.08] text-xs text-white/80 hover:bg-white/[.06] transition"><span>📦</span>Archive</button>
+        <button onclick="selectNewType('blank')" data-type="blank" class="create-type-btn flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-white/[.08] text-xs text-white/80 hover:bg-white/[.06] transition"><span>📝</span>Blank</button>
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="block text-[.6rem] uppercase tracking-wider text-white/40 mb-1">Name</label>
+      <div class="flex items-center gap-0">
+        <input type="text" id="create-new-name" class="flex-1 px-3 py-2.5 bg-white/[.04] border border-white/[.08] rounded-l-lg text-white/90 text-sm font-sans outline-none focus:border-white/[.2] transition" placeholder="Enter name...">
+        <span id="create-new-ext" class="px-2.5 py-2.5 bg-white/[.03] border border-l-0 border-white/[.08] rounded-r-lg text-white/40 text-sm font-mono select-none" style="display:none"></span>
+      </div>
+    </div>
+    <div class="mb-4">
+      <label class="block text-[.6rem] uppercase tracking-wider text-white/40 mb-1">Location</label>
+      <div class="flex items-center gap-1">
+        <div id="create-new-location" class="flex-1 px-3 py-2 bg-white/[.04] border border-white/[.08] rounded-lg text-white/90 text-xs font-sans overflow-hidden text-ellipsis whitespace-nowrap"></div>
+        <button onclick="changeCreateLocation()" class="px-2 py-2 bg-white/[.06] border border-white/[.1] rounded-lg text-[.6rem] text-white/80 hover:bg-white/[.1] transition" title="Change location">📂</button>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button class="flex-1 py-2.5 bg-white/[.06] border border-white/[.1] text-white/80 rounded-lg font-semibold cursor-pointer hover:bg-white/[.1] text-sm transition" onclick="executeCreateNew()">Create</button>
+      <button class="flex-1 py-2.5 bg-white/[.03] border border-white/[.06] text-white/40 rounded-lg font-semibold cursor-pointer hover:bg-white/[.06] text-sm transition" onclick="closeCreateNewModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Viewer -->
+<div id="viewer" class="hidden fixed inset-0 z-[800] bg-hk-bg flex-col">
+  <div id="viewer-header" class="flex items-center px-3 py-2 bg-[rgba(15,20,35,0.85)] backdrop-blur-lg border-b border-white/[.06] gap-2 flex-shrink-0 overflow-x-auto">
+    <button class="border border-danger/50 text-danger px-2.5 py-1 rounded text-xs cursor-pointer hover:bg-danger/10 transition flex-shrink-0" onclick="closeViewer()">Back</button>
+    <span class="flex-1 text-xs overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer hover:text-gold transition" id="viewer-filename" onclick="copyPath(viewerFilePath)" title="Click to copy path"></span>
+    <button class="border border-success/50 text-success px-2.5 py-1 rounded text-xs cursor-pointer hover:bg-success/10 transition flex-shrink-0 hidden" id="viewer-save" onclick="saveFile()">💾 Save</button>
+    <button class="border border-white/30 text-white/60 px-2.5 py-1 rounded text-xs cursor-pointer hover:bg-white/10 transition flex-shrink-0 hidden" id="viewer-textedit" onclick="toggleTextEdit()">✏ Edit</button>
+    <button class="border border-purple-400/50 text-purple-400 px-2.5 py-1 rounded text-xs cursor-pointer hover:bg-purple-400/10 transition flex-shrink-0 hidden" id="viewer-edit" onclick="openImageEditor()">✏ Edit</button>
+    <button class="border border-gold/50 text-gold px-2.5 py-1 rounded text-xs cursor-pointer hover:bg-gold-glow transition flex-shrink-0" id="viewer-share" onclick="shareViewing()">🔗 Share</button>
+    <button class="border border-success/50 text-success px-2.5 py-1 rounded text-xs cursor-pointer hover:bg-success/10 transition flex-shrink-0" onclick="downloadViewing()">⬇ Download</button>
+    <button class="border border-info/50 text-info px-2.5 py-1 rounded text-xs cursor-pointer hover:bg-info/10 transition flex-shrink-0" onclick="infoItem(viewerCurrentIdx)">ℹ Info</button>
+  </div>
+  <div id="viewer-body" class="flex-1 overflow-hidden relative"></div>
+
+  <!-- Image Editor Panel -->
+  <div id="editor-panel" class="hidden flex-1 flex-col overflow-hidden">
+    <!-- Editor Toolbar -->
+    <div class="flex items-center gap-1 px-2 py-1.5 bg-[#0a1230] border-b border-gold/15 overflow-x-auto flex-shrink-0">
+      <button class="editor-tool-btn px-2 py-1 rounded text-[.65rem] border border-cream-dim/30 text-cream-dim hover:bg-white/10 transition" data-mode="select" onclick="setEditorMode('select')">↖ Select</button>
+      <button class="editor-tool-btn px-2 py-1 rounded text-[.65rem] border border-cream-dim/30 text-cream-dim hover:bg-white/10 transition" data-mode="draw" onclick="setEditorMode('draw')">✏ Draw</button>
+      <button class="editor-tool-btn px-2 py-1 rounded text-[.65rem] border border-cream-dim/30 text-cream-dim hover:bg-white/10 transition" data-mode="highlight" onclick="setEditorMode('highlight')">🖍 Highlight</button>
+      <button class="editor-tool-btn px-2 py-1 rounded text-[.65rem] border border-cream-dim/30 text-cream-dim hover:bg-white/10 transition" data-mode="text" onclick="setEditorMode('text')">T Text</button>
+      <button class="editor-tool-btn px-2 py-1 rounded text-[.65rem] border border-cream-dim/30 text-cream-dim hover:bg-white/10 transition" data-mode="crop" onclick="setEditorMode('crop')">⬜ Crop</button>
+      <button class="editor-tool-btn px-2 py-1 rounded text-[.65rem] border border-cream-dim/30 text-cream-dim hover:bg-white/10 transition" data-mode="eraser" onclick="setEditorMode('eraser')">⌫ Eraser</button>
+      <span class="w-px h-5 bg-gold/20 mx-1"></span>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-cream-dim/30 text-cream-dim hover:bg-white/10 transition" onclick="editorAddShape('rect')">▢</button>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-cream-dim/30 text-cream-dim hover:bg-white/10 transition" onclick="editorAddShape('circle')">○</button>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-cream-dim/30 text-cream-dim hover:bg-white/10 transition" onclick="editorAddShape('arrow')">→</button>
+      <span class="w-px h-5 bg-gold/20 mx-1"></span>
+      <input type="color" value="#ff0000" class="w-6 h-6 rounded cursor-pointer bg-transparent border-none" onchange="editorSetColor(this.value)" title="Color">
+      <select class="bg-hk-bg text-cream text-[.6rem] border border-gold/20 rounded px-1 py-0.5" onchange="editorSetBrushSize(this.value)">
+        <option value="2">2px</option><option value="3" selected>3px</option><option value="5">5px</option><option value="8">8px</option><option value="12">12px</option>
+      </select>
+      <span class="w-px h-5 bg-gold/20 mx-1"></span>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-purple-400/30 text-purple-400 hover:bg-purple-400/10 transition" onclick="editorUndo()">↩</button>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-purple-400/30 text-purple-400 hover:bg-purple-400/10 transition" onclick="editorRedo()">↪</button>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-danger/30 text-danger hover:bg-danger/10 transition" onclick="editorDeleteSelected()">🗑</button>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-warn/30 text-warn hover:bg-warn/10 transition" onclick="editorApplyCrop()" id="editor-crop-apply" style="display:none">✓ Apply Crop</button>
+      <span class="w-px h-5 bg-gold/20 mx-1"></span>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-sky-400/30 text-sky-400 hover:bg-sky-400/10 transition" onclick="editorUpscale2x()" title="2x upscale (local)">2x↑</button>
+      <span class="flex-1"></span>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-success/40 text-success hover:bg-success/10 transition" onclick="editorSave()">💾 Save</button>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-gold/40 text-gold hover:bg-gold/10 transition" onclick="editorSaveAs()">Save As</button>
+      <button class="px-2 py-1 rounded text-[.65rem] border border-danger/40 text-danger hover:bg-danger/10 transition" onclick="editorRequestClose()">✕ Close Editor</button>
+    </div>
+    <!-- Canvas + Aether panel -->
+    <div class="flex flex-1 overflow-hidden relative">
+      <!-- Canvas area -->
+      <div id="editor-canvas-wrap" class="flex-1 relative overflow-hidden bg-[#1a1a2e]">
+        <canvas id="editor-canvas" style="position:relative;z-index:1;"></canvas>
+        <style>
+          #editor-canvas-wrap .canvas-container { position:absolute!important; inset:0!important; z-index:1!important; background:transparent!important; }
+          #editor-canvas-wrap .upper-canvas, #editor-canvas-wrap .lower-canvas { background:transparent!important; }
+        </style>
+      </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Aether Panel (fixed, outside all containers) -->
+<div id="ai-panel" style="display:none;position:fixed;top:0;right:0;bottom:0;z-index:99999;width:360px;background:rgba(5,8,16,0.8);border-left:1px solid rgba(255,255,255,0.06);flex-direction:column;overflow:hidden;box-shadow:-4px 0 40px rgba(0,0,0,0.7);">
+  <!-- Background image + overlay -->
+  <div style="position:absolute;inset:0;z-index:0;">
+    <img src="/assets/aether.jpg" style="width:100%;height:100%;object-fit:cover;opacity:0.08;filter:grayscale(0.6) brightness(0.4);">
+  </div>
+  <canvas id="aether-particles" style="position:absolute;inset:0;z-index:1;pointer-events:none;"></canvas>
+  <!-- Content -->
+  <div style="position:relative;z-index:2;display:flex;flex-direction:column;height:100%;">
+    <!-- Header -->
+    <div style="padding:12px 14px;border-bottom:1px solid rgba(120,100,200,0.12);display:flex;align-items:center;gap:8px;background:rgba(5,8,16,0.7);backdrop-filter:blur(8px);">
+      <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);letter-spacing:0.08em;flex:1;">AETHER</span>
+      <button onclick="toggleAetherPanel()" style="color:rgba(200,180,240,0.35);font-size:18px;background:none;border:none;cursor:pointer;padding:2px 6px;">✕</button>
+    </div>
+    <!-- Chat Messages -->
+    <div id="aether-chat-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
+    <!-- Input -->
+    <div style="padding:10px 12px;border-top:1px solid rgba(255,255,255,0.04);background:rgba(5,8,16,0.7);backdrop-filter:blur(8px);">
+      <div style="display:flex;gap:8px;align-items:stretch;">
+        <div style="flex:1;display:flex;flex-direction:column;position:relative;">
+          <textarea id="aether-chat-input" rows="2" style="flex:1;padding:10px 12px 22px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#e8edf5;font-size:13px;outline:none;resize:none;font-family:Inter,sans-serif;line-height:1.4;" placeholder="Ask Aether anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aetherSendChat();}"></textarea>
+          <button onclick="aetherClearChat()" style="position:absolute;bottom:6px;left:10px;font-size:9px;color:rgba(255,255,255,0.2);background:none;border:none;cursor:pointer;">Clear</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;align-items:center;">
+          <button id="aether-send-btn" onclick="aetherSendChat()" style="width:38px;height:38px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:rgba(255,255,255,0.7);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;">→</button>
+          <span style="font-size:9px;color:rgba(255,255,255,0.2);font-weight:500;">Aether</span>
+          <span id="aether-status" style="font-size:8px;display:flex;align-items:center;gap:3px;"><span id="aether-status-dot" style="width:5px;height:5px;border-radius:50%;background:#22c55e;"></span><span id="aether-status-text" style="color:rgba(255,255,255,0.2);">Ready</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Aether floating toggle button -->
+<button id="aether-toggle" onclick="toggleAetherPanel()" style="display:none;position:fixed;bottom:50px;right:16px;z-index:99999;padding:10px 16px;border-radius:10px;border:1px solid rgba(120,100,200,0.4);background:rgba(8,13,31,0.95);color:#b8a0e8;font-size:11px;font-weight:600;cursor:pointer;align-items:center;gap:7px;backdrop-filter:blur(6px);box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+  Aether
+</button>
+<style>
+  @media (max-width: 767px) {
+    #ai-panel { width:100%!important; left:0!important; border-left:none!important; }
+    #search-modal button[title] { min-width:36px!important; min-height:36px!important; }
+  }
+  @keyframes aether-pulse { 0%,100%{opacity:0.3;} 50%{opacity:1;} }
+</style>
+
+<!-- Search Modal (Spotlight-style) -->
+<div class="fixed inset-0 bg-black/50 z-[100000] hidden items-start justify-center pt-[10vh]" id="search-modal" onclick="if(event.target===this)closeSearch()">
+  <div class="w-[95%] max-w-[620px] flex flex-col" onclick="event.stopPropagation()">
+    <!-- Search bar -->
+    <div style="background:rgba(20,22,35,0.75);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:4px;box-shadow:0 24px 80px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.05);">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;">
+        <img src="/assets/icon-search.png" style="width:18px;height:18px;opacity:0.4;">
+        <input type="text" id="search-input" placeholder="Search" style="flex:1;background:none;border:none;color:#f0f0f0;font-size:17px;outline:none;font-family:Inter,sans-serif;font-weight:400;" oninput="onSearchInput()" onkeydown="if(event.key==='Enter')executeSearch();if(event.key==='Escape')closeSearch();">
+        <button onclick="showSearchSyntaxHelp()" style="opacity:0.25;background:none;border:1px solid rgba(255,255,255,0.15);cursor:pointer;font-size:11px;color:#fff;padding:2px 7px;border-radius:4px;">?</button>
+      </div>
+      <!-- Action icons — reordered: Scope > Filter > In-file > AI, right-aligned -->
+      <div style="display:flex;align-items:center;gap:3px;padding:6px 10px 6px;border-top:1px solid rgba(255,255,255,0.04);">
+        <input type="text" id="search-scope-path" class="hidden" style="padding:4px 8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:11px;outline:none;width:130px;" placeholder="/path..." onkeydown="if(event.key==='Enter')executeSearch()">
+        <span id="search-scope-label" style="font-size:10px;color:rgba(255,255,255,0.2);line-height:28px;">All roots</span>
+        <span style="flex:1;"></span>
+        <button onclick="toggleSearchScope()" id="search-scope-btn" title="Search scope" style="width:28px;height:28px;border-radius:7px;border:1px solid rgba(255,255,255,0.07);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;"><img src="/assets/icon-folder.png" style="width:14px;height:14px;opacity:0.35;"></button>
+        <button onclick="document.getElementById('search-filters').classList.toggle('hidden')" title="Type & extension filters" style="width:28px;height:28px;border-radius:7px;border:1px solid rgba(255,255,255,0.07);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;"><img src="/assets/icon-filter.png" style="width:14px;height:14px;opacity:0.35;"></button>
+        <button onclick="toggleSearchIntext()" id="search-intext-btn" title="Search inside files" style="width:28px;height:28px;border-radius:7px;border:1px solid rgba(255,255,255,0.07);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;"><img src="/assets/icon-doc.png" style="width:14px;height:14px;opacity:0.35;"></button>
+        <button onclick="toggleSearchAi()" id="search-ai-btn" title="AI-assisted search" style="width:28px;height:28px;border-radius:7px;border:1px solid rgba(255,255,255,0.07);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;"><img src="/assets/icon-ai.png" style="width:14px;height:14px;opacity:0.35;"></button>
+      </div>
+    </div>
+    <!-- Filters panel -->
+    <div id="search-filters" class="hidden" style="margin-top:6px;padding:10px 14px;background:rgba(20,22,35,0.7);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.07);border-radius:10px;">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <select id="search-type" style="padding:5px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#c0c0c0;font-size:11px;outline:none;"><option value="">All Types</option><option value="folder">Folders</option><option value="image">Images</option><option value="video">Video</option><option value="audio">Audio</option><option value="text">Text/Code</option><option value="archive">Archives</option></select>
+        <input type="text" id="search-ext" style="padding:5px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#c0c0c0;font-size:11px;outline:none;width:90px;" placeholder=".lua .cfg">
+        <select id="search-ext-mode" style="padding:5px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#c0c0c0;font-size:11px;outline:none;"><option value="include">Include</option><option value="exclude">Exclude</option></select>
+      </div>
+    </div>
+    <!-- Results -->
+    <div id="search-results" style="margin-top:6px;background:rgba(20,22,35,0.75);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.07);border-radius:10px;max-height:52vh;overflow-y:auto;display:none;padding:4px;">
+    </div>
+    <div style="text-align:center;margin-top:4px;"><span id="search-count" style="font-size:10px;color:rgba(255,255,255,0.15);"></span></div>
+  </div>
+</div>
+<!-- Drag overlay -->
+<div id="drag-overlay" class="hidden fixed inset-0 bg-[rgba(12,24,56,.92)] z-[400] items-center justify-center flex-col">
+  <div class="text-4xl text-gold mb-2.5">📂</div>
+  <p class="text-cream text-sm font-medium">Drop files to upload</p>
+</div>
+
+<!-- Lasso rect -->
+<div id="lasso-rect"></div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-16 left-1/2 -translate-x-1/2 bg-hk-light border border-gold-dim px-4 py-2 rounded-lg text-xs z-[600] hidden shadow-[0_4px_16px_rgba(0,0,0,.4)]"></div>
+
+<script src="/js/core.js?v=1782484193"></script>
+<script src="/js/selection.js?v=1782484193"></script>
+<script src="/js/clipboard.js?v=1782484193"></script>
+<script src="/js/upload.js?v=1782484193"></script>
+<script src="/js/drag.js?v=1782484193"></script>
+<script src="/js/viewer.js?v=1782484193"></script>
+<script src="/js/editor.js?v=1782484193"></script>
+<script src="/js/aether.js?v=1782484193"></script>
+<script src="/js/resolver.js?v=1782484193"></script>
+<script src="/js/keyboard.js?v=1782484193"></script>
+<script src="/js/status.js?v=1782484193"></script>
+</body>
+</html>

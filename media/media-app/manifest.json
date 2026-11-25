@@ -1,0 +1,21 @@
+{
+  "name": "HOMEKONG - File Manager",
+  "short_name": "HK Files",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0C1838",
+  "theme_color": "#0C1838",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/assets/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

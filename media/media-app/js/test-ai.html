@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html><head><title>AI Test</title></head>
+<body style="background:#111;color:#fff;font-family:sans-serif;padding:20px;">
+<h2>AI Image Test (async polling)</h2>
+<div style="margin-bottom:12px;">
+  <label style="font-size:12px;color:#aaa;">Attach image (optional, resized to 2048px max):</label><br>
+  <input type="file" id="fileInput" accept="image/*" style="margin-top:4px;">
+  <img id="preview" style="max-width:200px;max-height:200px;margin-top:8px;display:none;border:1px solid #444;">
+  <div id="sizeInfo" style="font-size:10px;color:#666;margin-top:4px;"></div>
+</div>
+<input id="prompt" value="make this image more vibrant" style="width:400px;padding:8px;">
+<button onclick="generate()" id="genBtn">Generate</button>
+<button onclick="cancel()" id="stopBtn" style="display:none;color:red;">Stop</button>
+<div id="status" style="margin-top:8px;">Ready</div>
+<div style="display:flex;gap:20px;margin-top:20px;">
+  <div><p style="font-size:11px;color:#888;">Input:</p><img id="inputImg" style="max-width:400px;border:2px solid #333;"></div>
+  <div><p style="font-size:11px;color:#888;">Output:</p><img id="result" style="max-width:400px;border:2px solid #333;"></div>
+</div>
+<script>
+let attachedB64 = null, currentJobId = null, aborted = false;
+
+document.getElementById("fileInput").addEventListener("change", e => {
+  const file = e.target.files[0]; if (!file) return;
+  const img = new Image();
+  img.onload = function() {
+    const MAX = 2048;
+    let w = img.width, h = img.height;
+    if (w > MAX || h > MAX) { const s = Math.min(MAX/w, MAX/h); w = Math.round(w*s); h = Math.round(h*s); }
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    c.getContext("2d").drawImage(img, 0, 0, w, h);
+    attachedB64 = c.toDataURL("image/png");
+    document.getElementById("preview").src = attachedB64;
+    document.getElementById("preview").style.display = "block";
+    document.getElementById("inputImg").src = attachedB64;
+    document.getElementById("sizeInfo").textContent = w+"x"+h+" | "+Math.round(attachedB64.length/1024)+"KB b64 | orig: "+img.width+"x"+img.height;
+  };
+  img.src = URL.createObjectURL(file);
+});
+
+async function generate() {
+  const prompt = document.getElementById("prompt").value;
+  aborted = false; currentJobId = null;
+  document.getElementById("genBtn").disabled = true;
+  document.getElementById("stopBtn").style.display = "inline";
+  const start = Date.now();
+
+  try {
+    // Submit
+    document.getElementById("status").textContent = "Submitting...";
+    const body = {prompt}; if (attachedB64) body.image = attachedB64;
+    const r = await fetch("/search-api/ai-image", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if (!r.ok) { document.getElementById("status").textContent = "Submit failed: HTTP "+r.status; return; }
+    const d = await r.json();
+    if (d.error) { document.getElementById("status").textContent = "Error: "+d.error; return; }
+    currentJobId = d.jobId;
+    document.getElementById("status").textContent = "Job started: "+currentJobId;
+
+    // Poll
+    while (!aborted) {
+      await new Promise(r => setTimeout(r, 2000));
+      if (aborted) break;
+      const elapsed = Math.round((Date.now()-start)/1000);
+      document.getElementById("status").textContent = "Polling... "+elapsed+"s (job: "+currentJobId+")";
+      const pr = await fetch("/search-api/ai-image?id="+currentJobId);
+      const pj = await pr.json();
+      if (pj.status === "done") {
+        const clean = (pj.b64||"").replace(/[\r\n\s]/g, "");
+        const raw = atob(clean);
+        const arr = new Uint8Array(raw.length);
+        for (let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+        const blob = new Blob([arr],{type:"image/png"});
+        document.getElementById("result").src = URL.createObjectURL(blob);
+        document.getElementById("status").textContent = "Done! "+elapsed+"s | "+Math.round(raw.length/1024)+"KB";
+        return;
+      } else if (pj.status === "error") {
+        document.getElementById("status").textContent = "Error: "+(pj.error||"unknown");
+        return;
+      }
+    }
+    if (aborted) document.getElementById("status").textContent = "Cancelled";
+  } catch(e) {
+    document.getElementById("status").textContent = "Error: "+e.message;
+  } finally {
+    document.getElementById("genBtn").disabled = false;
+    document.getElementById("stopBtn").style.display = "none";
+  }
+}
+
+function cancel() {
+  aborted = true;
+  if (currentJobId) fetch("/search-api/ai-image?id="+currentJobId,{method:"DELETE"});
+}
+</script>
+</body></html>

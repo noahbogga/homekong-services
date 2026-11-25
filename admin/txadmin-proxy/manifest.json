@@ -1,0 +1,21 @@
+{
+  "name": "HOMEKONG - Server Panel",
+  "short_name": "HK Panel",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0C1838",
+  "theme_color": "#0C1838",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/.hk/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/.hk/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "_README": "Manual evidence for events the football data API can't cover (MMA, boxing, NHL, WNBA, MLS, K-League, CSL). Key = team or fighter name (fuzzy-matched to home/away). Each value may have: form (e.g. 'WWLDW'), injuries (array of strings), notes (string). Delete this _README key or leave it — keys with no token overlap are ignored. Example entries below are commented-out via the _examples key; move them to the top level and edit to activate.",
+  "_examples": {
+    "Cody Gibson": { "notes": "3-fight win streak, moving up a weight class" },
+    "Florida Panthers": { "form": "WWWLW", "injuries": ["top-line center out (upper body)"] }
+  }
+}

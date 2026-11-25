@@ -1,0 +1,19 @@
+[Unit]
+Description=Aether Odds Model (Qwen2.5-7B via llama-server, HOMEKONG hk-odds-engine backend)
+After=network.target nvidia-persistenced.service
+
+[Service]
+Type=simple
+User=dockeradmin
+Environment=CUDA_VISIBLE_DEVICES=0
+# Wait for the GPU driver to be ready before launch (avoids silent CPU fallback on boot).
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do nvidia-smi > /dev/null 2>&1 && exit 0; sleep 2; done; exit 1'
+ExecStart=/home/dockeradmin/services/odds/odds-launch.sh
+# Hardened guard: confirm the model actually claimed VRAM (>1GB). If it silently
+# fell back to CPU, kill it so Restart=on-failure relaunches instead of serving slow.
+ExecStartPost=/home/dockeradmin/services/odds/odds-healthcheck.sh
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

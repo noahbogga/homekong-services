@@ -1,0 +1,13 @@
+{
+  "name": "tx-gate-dockerhost",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "otpauth": "^9.3.4",
+    "qrcode": "^1.5.4"
+  }
+}

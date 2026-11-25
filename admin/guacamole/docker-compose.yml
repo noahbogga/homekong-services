@@ -1,0 +1,62 @@
+services:
+  guacd:
+    container_name: guacd
+    image: guacamole/guacd:latest
+    restart: unless-stopped
+    networks:
+      - guac
+
+  guacamole:
+    container_name: guacamole
+    image: guacamole/guacamole:latest
+    restart: unless-stopped
+    environment:
+      GUACD_HOSTNAME: guacd
+      GUACD_PORT: 4822
+      POSTGRESQL_HOSTNAME: guac-db
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_DATABASE: guacamole_db
+      POSTGRESQL_USER: CHANGE_ME
+      POSTGRESQL_PASSWORD: CHANGE_ME
+      TOTP_ENABLED: "true"
+      BAN_ENABLED: "false"
+    depends_on:
+      - guac-db
+    networks:
+      - guac
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  guac-db:
+    container_name: guac-db
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: guacamole_db
+      POSTGRES_USER: CHANGE_ME
+      POSTGRES_PASSWORD: CHANGE_ME
+      PGDATA: /var/lib/postgresql/data/guacamole
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
+    networks:
+      - guac
+
+  mgmt-gate:
+    container_name: mgmt-gate
+    build: ./mgmt-gate
+    restart: unless-stopped
+    ports:
+      - "8087:3001"
+      - "8443:8443"
+    volumes:
+      - ./mgmt-gate/sessions.log:/app/sessions.log
+      - ./certs:/certs:ro
+    depends_on:
+      - guacamole
+    networks:
+      - guac
+
+networks:
+  guac:
+    driver: bridge

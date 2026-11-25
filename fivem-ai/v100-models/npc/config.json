@@ -1,0 +1,15 @@
+{
+  "model_path": "/home/dockeradmin/models/qwen2.5-7b-odds/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+  "host": "0.0.0.0",
+  "port": 8092,
+  "ctx_size": 8192,
+  "gpu_layers": 999,
+  "parallel_slots": 4,
+  "flash_attn": true,
+  "enable_props": true,
+  "defaults": {
+    "temperature": 0.8,
+    "top_p": 0.9
+  },
+  "_note": "HK NPC-AI dialog backend. SWAPPED Dolphin-8B -> Qwen2.5-7B 2026-08-26 (Cantonese head-to-head: Qwen clearly better HK slang). Reuses the odds Qwen GGUF (same file). ctx 8192. Grammar-constrain client-side."
+}

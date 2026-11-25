@@ -1,0 +1,26 @@
+{
+  "_comment": "Odds model settings. Managed by aether-odds-control API on :8091. Edit via API, not by hand, so live server + file stay in sync.",
+  "model_path": "/home/dockeradmin/models/qwen2.5-7b-odds/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+  "model_name": "qwen2.5-7b-odds",
+  "host": "0.0.0.0",
+  "port": 8081,
+  "ctx_size": 8192,
+  "gpu_layers": 99,
+  "flash_attn": true,
+  "parallel_slots": 2,
+  "enable_props": true,
+  "defaults": {
+    "temperature": 0.1,
+    "top_p": 0.9,
+    "top_k": 40,
+    "min_p": 0.05,
+    "seed": 42,
+    "max_tokens": 300
+  },
+  "system_prompt_file": "/home/dockeradmin/services/odds/system_prompt.txt",
+  "schema_file": "/home/dockeradmin/services/odds/schema.json",
+  "_allowed_models_note": "Only GGUF files that exist on disk are loadable. To add one: download a GGUF, add name->path here, then POST /model. The API validates the file exists before swapping.",
+  "allowed_models": {
+    "qwen2.5-7b-odds": "/home/dockeradmin/models/qwen2.5-7b-odds/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
+  }
+}

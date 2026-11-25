@@ -1,0 +1,33 @@
+img[src*="logo"],
+#login img,
+.logo img {
+  content: url("/static/custom/logo.png") !important;
+  width: 64px !important;
+  height: 64px !important;
+}
+
+#login {
+  background: #0C1838 !important;
+}
+
+header {
+  background: #0C1838 !important;
+  border-bottom: 1px solid rgba(194,163,90,.2) !important;
+}
+
+header .title {
+  font-family: 'Cinzel', serif !important;
+  letter-spacing: .1em !important;
+}
+
+.action {
+  color: #C2A35A !important;
+}
+
+button.action:hover {
+  background: rgba(194,163,90,.1) !important;
+}
+
+.credits {
+  display: none !important;
+}

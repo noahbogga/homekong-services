@@ -1,0 +1,14 @@
+{
+  "name": "STEAK — HOMEKONG Casino & Sportsbook",
+  "short_name": "STEAK",
+  "description": "HOMEKONG casino and sportsbook. Sign in with your in-game mobile access key.",
+  "start_url": "/play/",
+  "scope": "/play/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#06080b",
+  "theme_color": "#00c8ff",
+  "icons": [
+    { "src": "/play/images/steak-logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

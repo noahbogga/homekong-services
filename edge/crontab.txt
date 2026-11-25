@@ -1,0 +1,2 @@
+*/5 * * * * /home/dockeradmin/ddns-v-wxyz.sh >> /home/dockeradmin/ddns-v-wxyz.log 2>&1
+*/5 * * * * /usr/local/bin/ddns-vpn-update.sh >/dev/null 2>&1

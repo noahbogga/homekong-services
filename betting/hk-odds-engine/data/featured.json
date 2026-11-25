@@ -1,0 +1,169 @@
+{
+ "byCategory": {
+  "basketball": [
+   {
+    "eventId": "wnba_dream_valkyries_2026-10-29_b2",
+    "sportKey": "basketball_wnba",
+    "category": "basketball",
+    "home": "ATL Dream",
+    "away": "GS Valkyries",
+    "startTime": "2026-10-29T16:30Z",
+    "live": true,
+    "score": 45.260000000000005,
+    "pinned": false,
+    "badges": [
+     "LIVE"
+    ],
+    "blurb": "ATL Dream vs GS Valkyries — one to watch.",
+    "league": "basketball_wnba"
+   }
+  ],
+  "soccer": [
+   {
+    "eventId": "germany_-_bundesliga_07elversberg_mainz_2026-10-30_b3",
+    "sportKey": "soccer_germany_bundesliga",
+    "category": "soccer",
+    "home": "Elversberg",
+    "away": "Mainz",
+    "startTime": "2026-10-30T19:30Z",
+    "live": false,
+    "score": 63.27,
+    "pinned": false,
+    "badges": [
+     "PRESTIGE"
+    ],
+    "blurb": "Elversberg's hot streak vs. Mainz' improving form makes this a must-watch battle!",
+    "league": "soccer_germany_bundesliga"
+   },
+   {
+    "eventId": "italy_-_serie_a_frosinonecalcio_lecce_2026-10-29_b2",
+    "sportKey": "soccer_italy_serie_a",
+    "category": "soccer",
+    "home": "Frosinone",
+    "away": "Lecce",
+    "startTime": "2026-10-29T17:30Z",
+    "live": false,
+    "score": 59.23,
+    "pinned": false,
+    "badges": [
+     "PRESTIGE"
+    ],
+    "blurb": "Frosinone's hot streak vs. struggling Lecce makes this a must-watch underdog battle.",
+    "league": "soccer_italy_serie_a"
+   },
+   {
+    "eventId": "spain_-_la_liga_espanyol_villarreal_2026-10-30_b3",
+    "sportKey": "soccer_spain_la_liga",
+    "category": "soccer",
+    "home": "Villarreal",
+    "away": "Espanyol",
+    "startTime": "2026-10-30T20:00Z",
+    "live": false,
+    "score": 56.89,
+    "pinned": false,
+    "badges": [
+     "PRESTIGE"
+    ],
+    "blurb": "Villarreal's hot streak vs Espanyol's struggles make this a must-watch clash for goal-scoring action.",
+    "league": "soccer_spain_la_liga"
+   }
+  ],
+  "ice_hockey": [
+   {
+    "eventId": "nhl_bluejackets_hurricanes_2026-10-29_b3",
+    "sportKey": "icehockey_nhl",
+    "category": "ice_hockey",
+    "home": "Carolina Hurricanes",
+    "away": "Columbus Blue Jackets",
+    "startTime": "2026-10-29T23:00Z",
+    "live": false,
+    "score": 33,
+    "pinned": false,
+    "badges": [],
+    "blurb": "Carolina Hurricanes vs Columbus Blue Jackets — one to watch.",
+    "league": "icehockey_nhl"
+   }
+  ]
+ },
+ "all": [
+  {
+   "eventId": "wnba_dream_valkyries_2026-10-29_b2",
+   "sportKey": "basketball_wnba",
+   "category": "basketball",
+   "home": "ATL Dream",
+   "away": "GS Valkyries",
+   "startTime": "2026-10-29T16:30Z",
+   "live": true,
+   "score": 45.260000000000005,
+   "pinned": false,
+   "badges": [
+    "LIVE"
+   ],
+   "blurb": "ATL Dream vs GS Valkyries — one to watch.",
+   "league": "basketball_wnba"
+  },
+  {
+   "eventId": "germany_-_bundesliga_07elversberg_mainz_2026-10-30_b3",
+   "sportKey": "soccer_germany_bundesliga",
+   "category": "soccer",
+   "home": "Elversberg",
+   "away": "Mainz",
+   "startTime": "2026-10-30T19:30Z",
+   "live": false,
+   "score": 63.27,
+   "pinned": false,
+   "badges": [
+    "PRESTIGE"
+   ],
+   "blurb": "Elversberg's hot streak vs. Mainz' improving form makes this a must-watch battle!",
+   "league": "soccer_germany_bundesliga"
+  },
+  {
+   "eventId": "italy_-_serie_a_frosinonecalcio_lecce_2026-10-29_b2",
+   "sportKey": "soccer_italy_serie_a",
+   "category": "soccer",
+   "home": "Frosinone",
+   "away": "Lecce",
+   "startTime": "2026-10-29T17:30Z",
+   "live": false,
+   "score": 59.23,
+   "pinned": false,
+   "badges": [
+    "PRESTIGE"
+   ],
+   "blurb": "Frosinone's hot streak vs. struggling Lecce makes this a must-watch underdog battle.",
+   "league": "soccer_italy_serie_a"
+  },
+  {
+   "eventId": "spain_-_la_liga_espanyol_villarreal_2026-10-30_b3",
+   "sportKey": "soccer_spain_la_liga",
+   "category": "soccer",
+   "home": "Villarreal",
+   "away": "Espanyol",
+   "startTime": "2026-10-30T20:00Z",
+   "live": false,
+   "score": 56.89,
+   "pinned": false,
+   "badges": [
+    "PRESTIGE"
+   ],
+   "blurb": "Villarreal's hot streak vs Espanyol's struggles make this a must-watch clash for goal-scoring action.",
+   "league": "soccer_spain_la_liga"
+  },
+  {
+   "eventId": "nhl_bluejackets_hurricanes_2026-10-29_b3",
+   "sportKey": "icehockey_nhl",
+   "category": "ice_hockey",
+   "home": "Carolina Hurricanes",
+   "away": "Columbus Blue Jackets",
+   "startTime": "2026-10-29T23:00Z",
+   "live": false,
+   "score": 33,
+   "pinned": false,
+   "badges": [],
+   "blurb": "Carolina Hurricanes vs Columbus Blue Jackets — one to watch.",
+   "league": "icehockey_nhl"
+  }
+ ],
+ "at": "2026-10-29T16:30:00.830Z"
+}

@@ -1,0 +1,9 @@
+{
+  "admin": {
+    "hash": "CHANGE_ME_BCRYPT_HASH",
+    "role": "admin",
+    "totp_enabled": false,
+    "totp_secret": "",
+    "recovery_token": ""
+  }
+}

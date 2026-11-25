@@ -1,0 +1,11 @@
+{
+  "guacamoleVersion": "*",
+  "name": "HOMEKONG Branding",
+  "namespace": "homekong-branding",
+  "html": {},
+  "translations": {},
+  "resources": {
+    "images/logo-64.png": "image/png",
+    "images/logo-144.png": "image/png"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "properties": {
+    "matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "home": { "type": "string" },
+          "home_shift": { "type": "number" },
+          "draw_shift": { "type": "number" },
+          "away_shift": { "type": "number" },
+          "totals_shift": { "type": "number" },
+          "confidence": { "type": "number" },
+          "adjustments": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 40 },
+            "maxItems": 3
+          }
+        },
+        "required": ["home", "home_shift", "draw_shift", "away_shift", "totals_shift", "confidence", "adjustments"]
+      }
+    }
+  },
+  "required": ["matches"]
+}

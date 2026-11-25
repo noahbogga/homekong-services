@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HOMEKONG - Services</title>
+<link rel="icon" type="image/png" href="/.hk/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:#0C1838;font-family:'Inter',sans-serif;color:#F5F0E6;padding:24px}
+.header{display:flex;align-items:center;gap:8px;margin-bottom:24px;flex-wrap:nowrap}
+.header img{width:32px;height:32px;border-radius:12%;flex-shrink:0}
+.header h1{font-family:'Cinzel',serif;font-size:1rem;letter-spacing:.1em;white-space:nowrap}
+.back-btn{padding:6px 10px;font-family:'Inter',sans-serif;font-size:.6rem;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;border:1px solid rgba(194,163,90,.3);cursor:pointer;color:#C2A35A;background:rgba(194,163,90,.08);text-decoration:none;white-space:nowrap;flex-shrink:0}
+.back-btn:hover{background:rgba(194,163,90,.15)}
+.grid{display:grid;grid-template-columns:1fr 1fr auto;gap:20px;max-width:1200px;margin:0 auto}
+.vps-card{max-width:300px;align-self:start}
+@media(max-width:1100px){.grid{grid-template-columns:1fr;max-width:600px}.vps-card{max-width:none}}
+@media(max-width:600px){
+  body{padding:12px}
+  .header{gap:6px}
+  .header img{width:26px;height:26px}
+  .header h1{font-size:.85rem}
+  .back-btn{font-size:.55rem;padding:5px 8px}
+  .grid{gap:16px}
+  .service-card{padding:20px 16px;border-radius:10px}
+  .card-header h2{font-size:1.1rem}
+  .card-status{width:14px;height:14px}
+  .card-label{font-size:.8rem}
+  .info-row{font-size:.9rem;padding:8px 0}
+  .toggle-row{padding:12px 14px}
+  .toggle-label{font-size:.9rem}
+  .toggle{width:48px;height:26px}
+  .toggle .slider:before{width:20px;height:20px}
+  .toggle input:checked+.slider:before{transform:translateX(22px)}
+  .controls-grid{grid-template-columns:1fr;gap:10px}
+  .svc-btn{font-size:.95rem;padding:14px 12px;border-radius:6px}
+  .console-mini{height:200px;font-size:.7rem;padding:10px;border-radius:6px}
+}
+.service-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:20px;min-width:0;overflow:hidden}
+.card-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.card-header h2{font-family:'Cinzel',serif;font-size:.9rem;letter-spacing:.08em}
+.card-status{width:10px;height:10px;border-radius:50%;background:#666;margin-left:auto}
+.card-status.online{background:#34d399;box-shadow:0 0 6px rgba(52,211,153,.4)}
+.card-status.offline{background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,.4)}
+.card-label{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,240,230,.35);margin-bottom:10px}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:.72rem;color:rgba(245,240,230,.6);border-bottom:1px solid rgba(255,255,255,.03)}
+.info-row:last-child{border-bottom:none}
+.info-val{color:rgba(245,240,230,.9)}
+.controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.svc-btn{padding:10px 8px;font-family:'Inter',sans-serif;font-weight:500;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;border:1px solid rgba(194,163,90,.3);cursor:pointer;transition:all .2s;text-align:center;color:#C2A35A;background:rgba(194,163,90,.08)}
+.svc-btn:hover:not(:disabled){background:rgba(194,163,90,.15)}
+.svc-btn:disabled{opacity:.35;cursor:not-allowed}
+.svc-btn.danger{border-color:rgba(239,68,68,.3);color:#f87171;background:rgba(239,68,68,.06)}
+.svc-btn.danger:hover:not(:disabled){background:rgba(239,68,68,.12)}
+.svc-btn.success{border-color:rgba(52,211,153,.3);color:#34d399;background:rgba(52,211,153,.06)}
+.svc-btn.success:hover:not(:disabled){background:rgba(52,211,153,.12)}
+.svc-btn.full{grid-column:1/-1}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:rgba(0,0,0,.15);border-radius:4px}
+.toggle-label{font-size:.7rem;color:rgba(245,240,230,.7)}
+.toggle{position:relative;width:40px;height:22px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .slider{position:absolute;inset:0;background:rgba(255,255,255,.1);border-radius:11px;transition:.3s}
+.toggle .slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#666;border-radius:50%;transition:.3s}
+.toggle input:checked+.slider{background:rgba(52,211,153,.3)}
+.toggle input:checked+.slider:before{transform:translateX(18px);background:#34d399}
+.migrating{padding:16px;text-align:center;font-size:.72rem;color:rgba(245,240,230,.4);font-style:italic}
+.console-mini{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.04);border-radius:4px;padding:8px;margin-top:12px;height:180px;overflow-y:auto;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.52rem;line-height:1.4;color:rgba(200,200,200,.85);max-width:100%}
+.console-mini .line{white-space:pre;width:max-content}
+.console-mini .line.err{color:#f88}
+.console-mini .line.art{color:rgba(194,163,90,.6)}
+.console-mini .line.warn{color:#fbbf24}
+.console-mini .line.resource{color:rgba(130,200,160,.8)}
+.console-mini .line.script{color:rgba(160,180,220,.8)}
+canvas#bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.glow-orb{position:fixed;border-radius:50%;filter:blur(120px);opacity:.12;animation:drift 20s infinite alternate ease-in-out;z-index:0;pointer-events:none;}
+.glow-orb.a{width:500px;height:500px;background:#C2A35A;top:-200px;left:-100px;}
+.glow-orb.b{width:400px;height:400px;background:#1a6fff;bottom:-150px;right:-100px;animation-delay:-7s;}
+.glow-orb.c{width:350px;height:350px;background:#34d399;top:50%;left:60%;animation-delay:-13s;}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-30px) scale(1.1)}100%{transform:translate(-20px,20px) scale(.95)}}
+body{position:relative;}
+.header,.grid{position:relative;z-index:1;}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="glow-orb a"></div>
+<div class="glow-orb b"></div>
+<div class="glow-orb c"></div>
+<div class="header">
+  <img src="/.hk/logo.png" alt="HK">
+  <h1>SERVICES</h1>
+  <a href="/" class="back-btn" style="margin-left:auto">← Panel</a>
+  <button class="back-btn" onclick="location.reload()" style="margin-left:0;border-color:rgba(52,211,153,.3);color:#34d399;background:rgba(52,211,153,.08)">Refresh</button>
+  <button class="back-btn" style="margin-left:0;border-color:rgba(231,76,60,.3);color:#e74c3c;background:rgba(231,76,60,.08)" onclick="document.cookie='hk_token=;path=/;max-age=0';document.cookie='hk_tx=;path=/;max-age=0';document.cookie='hk_user=;path=/;max-age=0';location.href='/'">Logout</button>
+</div>
+
+<div class="grid">
+  <!-- GAME SERVER -->
+  <div class="service-card" id="gameCard">
+    <div class="card-header">
+      <h2>Game Server</h2>
+      <div class="card-status" id="gameDot"></div>
+    </div>
+    <p class="card-label">hk-fxmain · Ubuntu 22.04 · 192.168.50.235</p>
+    <div class="info-row"><span>Game Port</span><span class="info-val">30120</span></div>
+    <div class="info-row"><span>txAdmin Port</span><span class="info-val">40120</span></div>
+    <div class="info-row"><span>VM Status</span><span class="info-val" id="gameVmStatus">Checking...</span></div>
+    <div class="info-row"><span>VM Uptime</span><span class="info-val" id="gameVmUptime">Checking...</span></div>
+    <div class="info-row"><span>FXServer</span><span class="info-val" id="gameFxStatus">Checking...</span></div>
+    <div class="info-row"><span>FX Uptime</span><span class="info-val" id="gameFxUptime">Checking...</span></div>
+
+    <div class="toggle-row">
+      <span class="toggle-label">FXServer Process</span>
+      <label class="toggle"><input type="checkbox" id="gameFxToggle" onchange="toggleFx('game')"><span class="slider"></span></label>
+    </div>
+
+    <div class="controls-grid">
+      <button class="svc-btn" onclick="restartFx('game')">Restart FX</button>
+      <button class="svc-btn" onclick="openTxAdmin('game')">txAdmin Panel</button>
+      <button class="svc-btn danger full" onclick="restartVm('game')">Force Restart VM</button>
+    </div>
+
+    <div class="console-mini" id="gameLog"></div>
+  </div>
+
+  <!-- DEBUG SERVER -->
+  <div class="service-card" id="debugCard">
+    <div class="card-header">
+      <h2>Debug Server</h2>
+      <div class="card-status" id="debugDot"></div>
+    </div>
+    <p class="card-label">hk-fxtest · Ubuntu 22.04 · 192.168.50.236</p>
+    <div class="info-row"><span>Game Port</span><span class="info-val">30121</span></div>
+    <div class="info-row"><span>txAdmin Port</span><span class="info-val">40121</span></div>
+    <div class="info-row"><span>VM Status</span><span class="info-val" id="debugVmStatus">Checking...</span></div>
+    <div class="info-row"><span>VM Uptime</span><span class="info-val" id="debugVmUptime">Checking...</span></div>
+    <div class="info-row"><span>FXServer</span><span class="info-val" id="debugFxStatus">Checking...</span></div>
+    <div class="info-row"><span>FX Uptime</span><span class="info-val" id="debugFxUptime">Checking...</span></div>
+
+    <div class="toggle-row">
+      <span class="toggle-label">FXServer Process</span>
+      <label class="toggle"><input type="checkbox" id="debugFxToggle" onchange="toggleFx('debug')"><span class="slider"></span></label>
+    </div>
+
+    <div class="controls-grid">
+      <button class="svc-btn" onclick="restartFx('debug')">Restart FX</button>
+      <button class="svc-btn" onclick="openTxAdmin('debug')">txAdmin Panel</button>
+      <button class="svc-btn danger full" onclick="restartVm('debug')">Force Restart VM</button>
+    </div>
+
+    <div class="console-mini" id="debugLog"></div>
+  </div>
+
+  <!-- VPS -->
+  <div class="service-card vps-card" id="vpsCard">
+    <div class="card-header">
+      <h2>VPS Relay</h2>
+      <div class="card-status" id="vpsDot"></div>
+    </div>
+    <p class="card-label">VPS · Ubuntu 22.04 · 103.231.59.28</p>
+    <div class="info-row"><span>Public IP</span><span class="info-val">103.231.59.28</span></div>
+    <div class="info-row"><span>WireGuard</span><span class="info-val" id="vpsWgStatus">Checking...</span></div>
+    <div class="info-row"><span>Uptime</span><span class="info-val" id="vpsUptime">Checking...</span></div>
+
+    <div class="controls-grid">
+      <button class="svc-btn" onclick="vpsAction('wg-restart')">Restart WireGuard</button>
+      <button class="svc-btn" onclick="vpsAction('nginx-restart')">Restart Nginx</button>
+      <button class="svc-btn danger full" onclick="vpsAction('reboot')">Force Restart VPS</button>
+    </div>
+
+    <div class="console-mini" id="vpsLog"></div>
+  </div>
+</div>
+
+<script>
+if(document.cookie.indexOf("hk_tx=authenticated")===-1){window.location.href="/";}
+
+var API="/.hk/api/services";
+
+function colorize(msg){
+  if(!msg) return '';
+  if(msg.indexOf('Warning')!==-1||msg.indexOf('WARN')!==-1) return 'warn';
+  if(msg.indexOf('Error')!==-1||msg.indexOf('ERROR')!==-1||msg.indexOf('error')!==-1) return 'err';
+  if(msg.indexOf('[   resources]')!==-1||msg.indexOf('[resources')!==-1) return 'resource';
+  if(msg.indexOf('[    script:')!==-1||msg.indexOf('[  script:')!==-1||msg.indexOf('[script:')!==-1) return 'script';
+  return '';
+}
+
+function addLine(el,msg,cls){
+  var d=document.createElement("div");
+  d.className="line "+(cls||colorize(msg));
+  d.textContent=msg;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+  if(el.children.length>150)el.removeChild(el.firstChild);
+}
+
+function log(target,msg,cls){
+  var el=document.getElementById(target+"Log");
+  addLine(el,"["+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})+"] "+msg,cls);
+}
+
+function api(action,target){
+  return fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:action,target:target})}).then(function(r){return r.json();});
+}
+
+function fetchServiceStatus(){
+  fetch(API+"/status").then(function(r){return r.json();}).then(function(d){
+    document.getElementById("debugDot").className="card-status "+(d.debug.game?"online":"offline");
+    document.getElementById("debugVmStatus").textContent=d.debug.vm?"Running":"Stopped";
+    document.getElementById("debugVmUptime").textContent=d.debug.vmUptime||"Unknown";
+    document.getElementById("debugFxStatus").textContent=d.debug.game?"Online":"Offline";
+    document.getElementById("debugFxUptime").textContent=d.debug.fxUptime||"offline";
+    document.getElementById("debugFxToggle").checked=d.debug.game;
+
+    document.getElementById("gameDot").className="card-status "+(d.game.game?"online":"offline");
+    document.getElementById("gameVmStatus").textContent=d.game.vm?"Running":"Stopped";
+    document.getElementById("gameVmUptime").textContent=d.game.vmUptime||"Unknown";
+    document.getElementById("gameFxStatus").textContent=d.game.game?"Online":"Offline";
+    document.getElementById("gameFxUptime").textContent=d.game.fxUptime||"offline";
+    document.getElementById("gameFxToggle").checked=d.game.game;
+  }).catch(function(){});
+}
+
+function restartVm(target){
+  if(!confirm("Force restart the "+(target==="debug"?"Debug":"Game")+" VM? This will kill all processes."))return;
+  log(target,"Sending VM restart command...","");
+  api("vm-restart",target).then(function(d){
+    log(target,d.ok?"VM restart initiated":"Error: "+(d.error||"unknown"),d.ok?"":"err");
+  }).catch(function(e){log(target,"Request failed: "+e.message,"err");});
+}
+
+function restartFx(target){
+  if(!confirm("Restart FXServer on "+(target==="debug"?"Debug":"Game")+" server?"))return;
+  log(target,"Restarting FXServer...","");
+  api("fx-restart",target).then(function(d){
+    log(target,d.ok?"FXServer restart initiated":"Error: "+(d.error||"unknown"),d.ok?"":"err");
+  }).catch(function(e){log(target,"Request failed: "+e.message,"err");});
+}
+
+function toggleFx(target){
+  var on=document.getElementById(target==="debug"?"debugFxToggle":"gameFxToggle").checked;
+  var action=on?"fx-start":"fx-stop";
+  var msg=on?"Start FXServer on ":"Stop FXServer on ";
+  if(!confirm(msg+(target==="debug"?"Debug":"Game")+" server?")){
+    document.getElementById(target==="debug"?"debugFxToggle":"gameFxToggle").checked=!on;
+    return;
+  }
+  log(target,(on?"Starting":"Stopping")+" FXServer...","");
+  api(action,target).then(function(d){
+    log(target,d.ok?(on?"FXServer started":"FXServer stopped"):"Error: "+(d.error||"unknown"),d.ok?"":"err");
+  }).catch(function(e){log(target,"Request failed: "+e.message,"err");});
+}
+
+function openTxAdmin(target){
+  if(target==="debug"){window.open("https://txdebug.homekong.cc","_blank");}
+  else{window.open("https://tx.homekong.cc/server/console","_blank");}
+}
+
+function vpsAction(action){
+  var msgs={'wg-restart':'Restart WireGuard on VPS?','nginx-restart':'Restart Nginx on VPS?','reboot':'Force restart VPS? This will disconnect all players for ~30s.'};
+  if(!confirm(msgs[action]||('Run '+action+'?')))return;
+  var el=document.getElementById('vpsLog');
+  addLine(el,'['+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'] '+action+'...');
+  fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:action,target:'vps'})})
+    .then(function(r){return r.json();})
+    .then(function(d){addLine(el,'['+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'] '+(d.ok?'Done':'Error: '+(d.error||'unknown')),d.ok?'':'err');})
+    .catch(function(e){addLine(el,'['+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'] Failed: '+e.message,'err');});
+}
+
+var gameLogOffset=-1,debugLogOffset=-1,vpsLogOffset=-1;
+var gameLogEl=document.getElementById("gameLog");
+var debugLogEl=document.getElementById("debugLog");
+var vpsLogEl=document.getElementById("vpsLog");
+
+function fetchGameLogs(){
+  fetch("/.hk/api/logs?since="+gameLogOffset).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.lines||!d.lines.length)return;
+    for(var i=0;i<d.lines.length;i++){
+      if(d.lines[i].indexOf("Log Rotated")!==-1||d.lines[i].indexOf("====")!==-1)continue;
+      addLine(gameLogEl,d.lines[i]);
+    }
+    gameLogOffset=d.since;
+  }).catch(function(){});
+}
+
+function fetchDebugLogs(){
+  fetch("/.hk/api/logs/debug?since="+debugLogOffset).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.lines||!d.lines.length)return;
+    for(var i=0;i<d.lines.length;i++){
+      if(d.lines[i].indexOf("Log Rotated")!==-1||d.lines[i].indexOf("====")!==-1)continue;
+      addLine(debugLogEl,d.lines[i]);
+    }
+    debugLogOffset=d.since;
+  }).catch(function(){});
+}
+
+function fetchVpsLogs(){
+  fetch("/.hk/api/logs/vps?since="+vpsLogOffset).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.lines||!d.lines.length)return;
+    for(var i=0;i<d.lines.length;i++){
+      addLine(vpsLogEl,d.lines[i]);
+    }
+    vpsLogOffset=d.since;
+  }).catch(function(){});
+}
+
+function initConsoles(){
+  var art=[
+    " _  _ ___  __  __ ___ _  _____  _  _  ___ ",
+    "| || / _ \\|  \\/  | __| |/ / _ \\| \\| |/ __|",
+    "| __ | (_) | |\\/| | _|| ' < (_) | .` | (_ |",
+    "|_||_|\\___/|_|  |_|___|_|\\_\\___/|_|\\_|\\___|"
+  ];
+  for(var i=0;i<art.length;i++){addLine(gameLogEl,art[i],"art");addLine(debugLogEl,art[i],"art");}
+  addLine(gameLogEl,"── Game Server (hk-fxmain) Log ──────────────","art");
+  addLine(debugLogEl,"── Debug Server (hk-fxtest) Log ─────────────","art");
+}
+
+initConsoles();
+fetchServiceStatus();
+fetchVpsStatus();
+fetchGameLogs();
+fetchDebugLogs();
+fetchVpsLogs();
+setInterval(fetchServiceStatus,5000);
+setInterval(fetchVpsStatus,10000);
+setInterval(fetchGameLogs,3000);
+setInterval(fetchDebugLogs,3000);
+setInterval(fetchVpsLogs,5000);
+
+function fetchVpsStatus(){
+  fetch(API+"/status").then(function(r){return r.json();}).then(function(d){
+    if(!d.vps)return;
+    document.getElementById("vpsDot").className="card-status "+(d.vps.online?"online":"offline");
+    document.getElementById("vpsWgStatus").textContent=d.vps.wg?"Active":"Down";
+    document.getElementById("vpsUptime").textContent=d.vps.uptime||"Unknown";
+  }).catch(function(){});
+}
+</script>
+<script>(function(){var c=document.getElementById("bg"),ctx=c.getContext("2d");var particles=[];function resize(){c.width=window.innerWidth;c.height=window.innerHeight;}window.addEventListener("resize",resize);resize();for(var i=0;i<60;i++){particles.push({x:Math.random()*c.width,y:Math.random()*c.height,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.5+.5,a:Math.random()*.3+.1});}function draw(){ctx.clearRect(0,0,c.width,c.height);for(var i=0;i<particles.length;i++){var p=particles[i];p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=c.width;if(p.x>c.width)p.x=0;if(p.y<0)p.y=c.height;if(p.y>c.height)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle="rgba(194,163,90,"+p.a+")";ctx.fill();}for(var i=0;i<particles.length;i++){for(var j=i+1;j<particles.length;j++){var dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y;var dist=Math.sqrt(dx*dx+dy*dy);if(dist<120){ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle="rgba(194,163,90,"+(0.06*(1-dist/120))+")";ctx.stroke();}}}requestAnimationFrame(draw);}draw();})();</script>
+</body>
+</html>

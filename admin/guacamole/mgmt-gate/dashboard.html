@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#eab308">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<title>HOMEKONG Remote</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1f3e0;</text></svg>">
+<script src="/guacamole.min.js"></script>
+<script src="/novnc-keyboard.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--surface:rgba(17,17,17,0.92);--border:rgba(234,179,8,0.15);
+  --gold:#eab308;--gold-dim:rgba(234,179,8,0.6);--gold-glow:rgba(234,179,8,0.08);
+  --text:#e5e5e5;--text-muted:#737373;--red:#ef4444;--green:#22c55e;
+  --radius:12px;--ease:cubic-bezier(0.4,0,0.2,1);--dur:300ms;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;position:fixed;width:100%;touch-action:none;overscroll-behavior:none}
+
+/* Dot grid background */
+#dot-grid{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(rgba(234,179,8,0.07) 1px,transparent 1px);
+  background-size:24px 24px;
+  mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,black 10%,transparent 70%);
+  -webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,black 10%,transparent 70%);
+}
+
+/* Display container */
+#display-area{
+  position:fixed;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;touch-action:none;overscroll-behavior:none;
+}
+#display-area>div{touch-action:none;overflow:hidden;}
+
+/* Toolbar */
+#toolbar{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:200;
+  display:flex;align-items:center;gap:3px;padding:6px 14px;
+  background:rgba(17,17,17,0.7);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:999px;
+  box-shadow:0 4px 30px rgba(0,0,0,0.4);
+  animation:fadeDown .5s var(--ease) forwards;
+  transition:opacity .3s var(--ease),transform .3s var(--ease);
+}
+#toolbar.collapsed .tb-sep,
+#toolbar.collapsed .tb-status,
+#toolbar.collapsed .tb-info,
+#toolbar.collapsed .tb-btn,
+#toolbar.collapsed .tb-timer{
+  width:0;height:0;padding:0;margin:0;overflow:hidden;opacity:0;border:none;pointer-events:none;
+  transition:all .3s var(--ease);
+}
+#toolbar.collapsed{padding:6px 12px;gap:0;transition:all .3s var(--ease)}
+#toolbar.collapsed .tb-brand{margin:0}
+@keyframes fadeDown{from{opacity:0;transform:translateX(-50%) translateY(-16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+.tb-brand{
+  font-size:12px;font-weight:700;letter-spacing:1px;padding:0 6px;
+  background:linear-gradient(135deg,#eab308,#fde047,#eab308);
+  background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;animation:shimmer 3s ease infinite;user-select:none;cursor:pointer;
+}
+@keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+
+.tb-sep{width:1px;height:20px;background:var(--border);margin:0 5px}
+
+.tb-btn{
+  width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  border:none;background:transparent;color:var(--text-muted);border-radius:8px;
+  cursor:pointer;transition:all .2s var(--ease);position:relative;
+}
+.tb-btn svg{width:17px;height:17px;transition:transform .2s var(--ease)}
+.tb-btn:hover{background:var(--gold-glow);color:var(--text)}
+.tb-btn:hover svg{transform:scale(1.15)}
+.tb-btn.active{background:rgba(234,179,8,0.12);color:var(--gold)}
+.tb-btn.disconnect-btn:hover{color:var(--red);background:rgba(239,68,68,0.08)}
+
+/* Toolbar status elements */
+.tb-status{display:flex;align-items:center;gap:5px;font-size:.68rem;color:var(--text-muted)}
+.tb-info{font-size:.65rem;color:var(--text-muted);letter-spacing:.3px}
+.tb-timer{font-family:'Cascadia Code','JetBrains Mono',monospace;font-size:.63rem}
+</style>
+</head>
+<body>
+<div id="dot-grid"></div>
+<div id="display-area"></div>
+<!-- Toolbar (draggable via HK) -->
+<div id="toolbar">
+  <span class="tb-brand" id="tb-brand">HK</span>
+  <div class="tb-sep"></div>
+  <div class="tb-status"><div class="status-dot" id="status-dot"></div><span id="sb-state">Connecting</span></div>
+  <div class="tb-sep"></div>
+  <span class="tb-info" id="sb-res">1366x768</span>
+  <span class="tb-info tb-timer" id="sb-timer">00:00:00</span>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-display" data-panel="display" onclick="togglePanel('display')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+  </button>
+  <button class="tb-btn" id="btn-clipboard" data-panel="clipboard" onclick="togglePanel('clipboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+  </button>
+  <button class="tb-btn" id="btn-keyboard" data-panel="keyboard" onclick="togglePanel('keyboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+  </button>
+  <button class="tb-btn" id="btn-osk" onclick="toggleOSK()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M9 16h6"/></svg>
+  </button>
+  <button class="tb-btn" id="btn-screenshot" onclick="takeScreenshot()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+  </button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-settings" data-panel="settings" onclick="togglePanel('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+  </button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-reconnect" onclick="doReconnect()" title="Reconnect">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+  </button>
+  <button class="tb-btn disconnect-btn" id="btn-disconnect" onclick="doDisconnect()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 010 12.73"/><path d="M12 2v4"/><circle cx="12" cy="12" r="1"/><path d="M5.64 6.64a9 9 0 000 12.73"/></svg>
+  </button>
+</div>
+
+<!-- Display Panel -->
+<div class="side-panel" id="panel-display">
+  <div class="panel-header">
+    <h2>Display</h2>
+    <button class="panel-close" onclick="togglePanel('display')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="panel-body">
+    <div class="p-section">
+      <h3>Profile</h3>
+      <div class="preset-grid">
+        <button class="preset-btn" data-preset="speed" onclick="setPreset('speed')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span>Speed</span>
+        </button>
+        <button class="preset-btn active" data-preset="balance" onclick="setPreset('balance')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+          <span>Balance</span>
+        </button>
+        <button class="preset-btn" data-preset="quality" onclick="setPreset('quality')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+          <span>Quality</span>
+        </button>
+      </div>
+      <p class="panel-desc preset-desc" id="preset-desc">Balanced — 24-bit color, 75% render</p>
+    </div>
+    <div class="p-section">
+      <h3>Resolution</h3>
+      <div class="res-grid">
+        <button class="res-btn" data-w="1920" data-h="1080" onclick="setRes(this)"><span class="res-label">1920x1080</span><span class="res-sub">Full HD</span></button>
+        <button class="res-btn" data-w="1680" data-h="1050" onclick="setRes(this)"><span class="res-label">1680x1050</span><span class="res-sub">WSXGA+</span></button>
+        <button class="res-btn" data-w="1440" data-h="900" onclick="setRes(this)"><span class="res-label">1440x900</span><span class="res-sub">WXGA+</span></button>
+        <button class="res-btn active" data-w="1366" data-h="768" onclick="setRes(this)"><span class="res-label">1366x768</span><span class="res-sub">Default</span></button>
+        <button class="res-btn" data-w="1280" data-h="720" onclick="setRes(this)"><span class="res-label">1280x720</span><span class="res-sub">HD</span></button>
+        <button class="res-btn" data-w="1024" data-h="768" onclick="setRes(this)"><span class="res-label">1024x768</span><span class="res-sub">XGA</span></button>
+      </div>
+    </div>
+    <div class="p-section">
+      <h3>Render Scale</h3>
+      <select id="render-select" class="hk-select" onchange="setRenderScaleSelect(this.value)">
+        <option value="100">100%</option>
+        <option value="95">95%</option>
+        <option value="90">90%</option>
+        <option value="85">85%</option>
+        <option value="80">80%</option>
+        <option value="75" selected>75%</option>
+        <option value="70">70%</option>
+        <option value="65">65%</option>
+        <option value="60">60%</option>
+        <option value="55">55%</option>
+        <option value="50">50%</option>
+      </select>
+    </div>
+    <div class="p-section">
+      <h3>Zoom</h3>
+      <div class="zoom-grid">
+        <button class="zoom-btn active" data-zoom="0" onclick="setZoom(this)">Auto</button>
+        <button class="zoom-btn" data-zoom="50" onclick="setZoom(this)">50%</button>
+        <button class="zoom-btn" data-zoom="75" onclick="setZoom(this)">75%</button>
+        <button class="zoom-btn" data-zoom="100" onclick="setZoom(this)">100%</button>
+        <button class="zoom-btn" data-zoom="125" onclick="setZoom(this)">125%</button>
+        <button class="zoom-btn" data-zoom="150" onclick="setZoom(this)">150%</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Clipboard Panel -->
+<div class="side-panel" id="panel-clipboard">
+  <div class="panel-header">
+    <h2>Clipboard</h2>
+    <button class="panel-close" onclick="togglePanel('clipboard')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="panel-body">
+    <div class="p-section">
+      <label class="toggle-row"><input type="checkbox" id="opt-clip-sync" checked onchange="toggleClipSync(this.checked)"><span>Auto-sync clipboard</span></label>
+      <p class="panel-desc">When enabled, your local clipboard automatically syncs with the remote machine. Copy here → paste there, and vice versa.</p>
+    </div>
+    <div class="p-section">
+      <h3>Manual Transfer</h3>
+      <p class="panel-desc">For browsers that block clipboard access, paste text below and send it manually.</p>
+      <textarea id="clip-text" placeholder="Ctrl+V here, then hit Send..."></textarea>
+      <div class="clip-actions">
+        <button onclick="sendClipboard()">Send to Remote</button>
+        <button onclick="pullClipboard()">Pull from Remote</button>
+      </div>
+    </div>
+    <div class="p-section clip-status">
+      <span class="clip-indicator" id="clip-dir"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Keyboard Panel -->
+<div class="side-panel" id="panel-keyboard">
+  <div class="panel-header">
+    <h2>Keys</h2>
+    <button class="panel-close" onclick="togglePanel('keyboard')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="panel-body">
+    <div class="p-section">
+      <h3>Combos</h3>
+      <div class="key-grid">
+        <button class="key-btn" onclick="sendKeys('cad')">Ctrl+Alt+Del</button>
+        <button class="key-btn" onclick="sendKeys('alttab')">Alt+Tab</button>
+        <button class="key-btn" onclick="sendKeys('altf4')">Alt+F4</button>
+        <button class="key-btn" onclick="sendKeys('ctrlshiftesc')">Ctrl+Shift+Esc</button>
+        <button class="key-btn" onclick="sendKeys('super')">Super</button>
+        <button class="key-btn" onclick="sendKeys('superd')">Super+D</button>
+        <button class="key-btn" onclick="sendKeys('superl')">Super+L</button>
+        <button class="key-btn" onclick="sendKeys('ctrlaltt')">Ctrl+Alt+T</button>
+        <button class="key-btn" onclick="sendKeys('prtsc')">PrtSc</button>
+        <button class="key-btn" onclick="sendKeys('altf2')">Alt+F2</button>
+      </div>
+    </div>
+    <div class="p-section">
+      <h3>Modifiers (sticky)</h3>
+      <div class="mod-grid">
+        <button class="mod-btn" id="mod-ctrl" onclick="toggleMod('ctrl')">Ctrl</button>
+        <button class="mod-btn" id="mod-alt" onclick="toggleMod('alt')">Alt</button>
+        <button class="mod-btn" id="mod-shift" onclick="toggleMod('shift')">Shift</button>
+        <button class="mod-btn" id="mod-super" onclick="toggleMod('super')">Super</button>
+      </div>
+    </div>
+    <div class="p-section">
+      <h3>Function Keys</h3>
+      <div class="fn-grid">
+        <button class="fn-btn" onclick="sendFn(1)">F1</button>
+        <button class="fn-btn" onclick="sendFn(2)">F2</button>
+        <button class="fn-btn" onclick="sendFn(3)">F3</button>
+        <button class="fn-btn" onclick="sendFn(4)">F4</button>
+        <button class="fn-btn" onclick="sendFn(5)">F5</button>
+        <button class="fn-btn" onclick="sendFn(6)">F6</button>
+        <button class="fn-btn" onclick="sendFn(7)">F7</button>
+        <button class="fn-btn" onclick="sendFn(8)">F8</button>
+        <button class="fn-btn" onclick="sendFn(9)">F9</button>
+        <button class="fn-btn" onclick="sendFn(10)">F10</button>
+        <button class="fn-btn" onclick="sendFn(11)">F11</button>
+        <button class="fn-btn" onclick="sendFn(12)">F12</button>
+      </div>
+    </div>
+    <div class="p-section">
+      <h3>Special</h3>
+      <div class="key-grid">
+        <button class="key-btn" onclick="sendSingle(0xFF1B)">Esc</button>
+        <button class="key-btn" onclick="sendSingle(0xFF09)">Tab</button>
+        <button class="key-btn" onclick="sendSingle(0xFFFF)">Del</button>
+        <button class="key-btn" onclick="sendSingle(0xFF63)">Ins</button>
+        <button class="key-btn" onclick="sendSingle(0xFF50)">Home</button>
+        <button class="key-btn" onclick="sendSingle(0xFF57)">End</button>
+        <button class="key-btn" onclick="sendSingle(0xFF55)">PgUp</button>
+        <button class="key-btn" onclick="sendSingle(0xFF56)">PgDn</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Panel -->
+<div class="side-panel" id="panel-settings">
+  <div class="panel-header">
+    <h2>Settings</h2>
+    <button class="panel-close" onclick="togglePanel('settings')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="panel-body">
+    <div class="p-section">
+      <h3>Preferences</h3>
+      <label class="toggle-row"><input type="checkbox" id="opt-localcursor" checked onchange="toggleLocalCursor(this.checked)"><span>Local cursor (lower latency)</span></label>
+      <div class="setting-row">
+        <span class="setting-label">Scroll speed</span>
+        <select id="scroll-speed" onchange="setScrollSpeed(this.value)">
+          <option value="0.25">Slow</option>
+          <option value="0.5" selected>Normal</option>
+          <option value="1">Fast</option>
+          <option value="2">Fastest</option>
+        </select>
+      </div>
+    </div>
+    <div class="p-section">
+      <h3>Connection Info</h3>
+      <div class="info-rows">
+        <div class="info-row"><span class="info-label">Server</span><span class="info-value" id="info-server">HK Remote</span></div>
+        <div class="info-row"><span class="info-label">Resolution</span><span class="info-value" id="info-res">1366x768</span></div>
+        <div class="info-row"><span class="info-label">State</span><span class="info-value" id="info-state">Connecting</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay States -->
+<div id="overlay">
+  <div class="overlay-card" id="overlay-connecting">
+    <div class="spinner"></div>
+    <p class="overlay-text">Establishing connection...</p>
+  </div>
+  <div class="overlay-card hidden" id="overlay-error">
+    <div class="error-icon">!</div>
+    <p class="overlay-text" id="error-msg">Connection failed</p>
+    <button class="overlay-btn" onclick="doReconnect()">Reconnect</button>
+  </div>
+  <div class="overlay-card hidden" id="overlay-disconnected">
+    <p class="overlay-text">Session ended</p>
+    <button class="overlay-btn" onclick="doLogout()">Log in again</button>
+  </div>
+</div>
+
+<!-- Mobile Keyboard Button (visible on mobile only) -->
+<button id="kbd-toggle" ontouchend="openMobileKbd(event)">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+</button>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Hidden native keyboard trigger -->
+<input type="text" id="mobile-input" style="position:fixed;top:-100px;left:-100px;opacity:0;width:1px;height:1px" autocomplete="off" autocorrect="off" autocapitalize="off">
+
+<!-- On-screen keyboard (compact modifier+key strip) -->
+<div id="osk-bar" class="osk-hidden">
+  <div class="osk-row">
+    <button class="osk-mod" id="osk-ctrl" ontouchstart="oskModDown('ctrl')" onmousedown="oskModDown('ctrl')">Ctrl</button>
+    <button class="osk-mod" id="osk-alt" ontouchstart="oskModDown('alt')" onmousedown="oskModDown('alt')">Alt</button>
+    <button class="osk-mod" id="osk-shift" ontouchstart="oskModDown('shift')" onmousedown="oskModDown('shift')">Shift</button>
+    <button class="osk-key" id="osk-caps" onmousedown="oskToggleCaps()" ontouchstart="oskToggleCaps()">Caps</button>
+    <button class="osk-key" onmousedown="oskKey(0xFF09)">Tab</button>
+    <button class="osk-key" onmousedown="oskKey(0xFF1B)">Esc</button>
+    <button class="osk-key" onmousedown="oskKey(0xFF52)">&#9650;</button>
+    <button class="osk-key" onmousedown="oskKey(0xFF54)">&#9660;</button>
+    <button class="osk-key" onmousedown="oskKey(0xFF51)">&#9664;</button>
+    <button class="osk-key" onmousedown="oskKey(0xFF53)">&#9654;</button>
+    <button class="osk-key" onmousedown="oskKey(0xFF0D)">&#9166;</button>
+  </div>
+</div>
+
+<style>
+/* Status dot in toolbar */
+.status-dot{width:8px;height:8px;border-radius:50%;background:#737373;margin-left:8px;transition:background .3s}
+.status-dot.connected{background:var(--green);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* Side panels */
+.side-panel{
+  position:fixed;top:0;right:0;width:340px;height:100vh;z-index:150;
+  background:var(--surface);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-left:1px solid var(--border);
+  box-shadow:-8px 0 40px rgba(0,0,0,0.5);
+  transform:translateX(100%);transition:transform var(--dur) var(--ease);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.side-panel::before{
+  content:'';position:absolute;inset:-1px;border-radius:0;padding:1px;
+  background:conic-gradient(from var(--beam-angle,0deg),transparent 80%,var(--gold-dim) 100%);
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:0;
+  transition:opacity .5s;
+}
+.side-panel.open{transform:translateX(0)}
+.side-panel.open::before{opacity:1}
+
+.panel-header{
+  padding:16px 20px;border-bottom:1px solid var(--border);display:flex;
+  align-items:center;justify-content:space-between;
+}
+.panel-header h2{font-size:.75rem;font-weight:600;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase}
+.panel-close{
+  width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--border);background:transparent;color:var(--text-muted);
+  border-radius:6px;cursor:pointer;transition:all .15s;
+}
+.panel-close:hover{background:var(--gold-glow);color:var(--text);border-color:rgba(234,179,8,0.3)}
+.panel-body{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:16px}
+.panel-body::-webkit-scrollbar{width:4px}
+.panel-body::-webkit-scrollbar-thumb{background:rgba(234,179,8,0.2);border-radius:4px}
+
+.p-section h3{font-size:.65rem;font-weight:600;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.panel-desc{font-size:.72rem;color:var(--text-muted);line-height:1.5;margin-bottom:6px}
+
+/* Resolution grid */
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.res-btn{
+  padding:10px 8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);
+  border-radius:8px;color:var(--text-muted);font-size:.72rem;cursor:pointer;
+  transition:all .15s;text-align:center;
+}
+.res-btn:hover{background:var(--gold-glow);color:var(--text);border-color:rgba(234,179,8,0.25)}
+.res-btn.active{background:rgba(234,179,8,0.1);color:var(--gold);border-color:rgba(234,179,8,0.35)}
+.res-label{display:block;font-weight:600;font-size:.72rem}
+.res-sub{display:block;font-size:.6rem;color:var(--text-muted);margin-top:2px}
+
+/* Zoom grid */
+.zoom-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+
+/* Preset grid */
+.preset-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.preset-btn{
+  padding:12px 8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);
+  border-radius:8px;color:var(--text-muted);font-size:.72rem;font-weight:500;cursor:pointer;
+  transition:all .15s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.preset-btn:hover{background:var(--gold-glow);color:var(--text);border-color:rgba(234,179,8,0.25)}
+.preset-btn.active{background:rgba(234,179,8,0.1);color:var(--gold);border-color:rgba(234,179,8,0.35)}
+.preset-desc{font-size:.65rem;margin-top:6px;text-align:center}
+
+/* Select dropdown */
+.hk-select{
+  width:100%;padding:10px 12px;background:#0d0d0d;border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:.78rem;outline:none;cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23737373' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;
+  transition:border-color .2s;
+}
+.hk-select:focus{border-color:rgba(234,179,8,0.3)}
+.hk-select option{background:#111;color:var(--text)}
+.zoom-btn{
+  padding:8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);
+  border-radius:8px;color:var(--text-muted);font-size:.7rem;font-weight:500;cursor:pointer;
+  transition:all .15s;text-align:center;
+}
+.zoom-btn:hover{background:var(--gold-glow);color:var(--text);border-color:rgba(234,179,8,0.25)}
+.zoom-btn.active{background:rgba(234,179,8,0.1);color:var(--gold);border-color:rgba(234,179,8,0.35)}
+
+</style>
+<style>
+/* Clipboard panel textarea */
+#clip-text{
+  flex:1;min-height:120px;background:#0d0d0d;border:1px solid rgba(255,255,255,0.08);border-radius:8px;
+  color:var(--text);font-size:.8rem;padding:12px;resize:none;outline:none;
+  font-family:'Cascadia Code','JetBrains Mono',monospace;line-height:1.5;transition:border-color .2s;
+}
+#clip-text:focus{border-color:rgba(234,179,8,0.3)}
+.clip-actions{display:flex;gap:6px}
+.clip-actions button{
+  flex:1;padding:10px;background:var(--gold-glow);border:1px solid var(--border);
+  color:var(--gold);border-radius:8px;font-size:.72rem;font-weight:500;cursor:pointer;transition:all .15s;
+}
+.clip-actions button:hover{background:rgba(234,179,8,0.15);border-color:rgba(234,179,8,0.3)}
+.clip-status{text-align:center}
+.clip-indicator{font-size:.65rem;color:var(--gold-dim);opacity:0.5;transition:opacity .3s}
+
+/* Toggle row */
+.toggle-row{
+  display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer;font-size:.78rem;color:var(--text);
+}
+.toggle-row input[type=checkbox]{
+  -webkit-appearance:none;width:36px;height:20px;background:rgba(255,255,255,0.1);
+  border-radius:10px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;
+}
+.toggle-row input[type=checkbox]::after{
+  content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;
+  background:#fff;border-radius:50%;transition:transform .2s;
+}
+.toggle-row input[type=checkbox]:checked{background:var(--gold)}
+.toggle-row input[type=checkbox]:checked::after{transform:translateX(16px)}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:.78rem;color:var(--text)}
+.setting-row select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:.72rem;outline:none}
+
+/* Key grid */
+.key-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.key-btn{
+  padding:10px 8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);
+  border-radius:8px;color:var(--text-muted);font-size:.7rem;font-weight:500;
+  cursor:pointer;transition:all .15s;text-align:center;
+}
+.key-btn:hover{background:var(--gold-glow);color:var(--text);border-color:rgba(234,179,8,0.25)}
+.key-btn:active{background:rgba(234,179,8,0.15);color:var(--gold)}
+
+/* Modifier grid */
+.mod-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
+.mod-btn{
+  padding:10px 8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);
+  border-radius:8px;color:var(--text-muted);font-size:.7rem;font-weight:600;
+  cursor:pointer;transition:all .15s;text-align:center;
+}
+.mod-btn:hover{background:var(--gold-glow);color:var(--text)}
+.mod-btn.held{background:rgba(234,179,8,0.2);color:var(--gold);border-color:var(--gold)}
+
+/* Function key grid */
+.fn-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.fn-btn{
+  padding:8px 4px;background:rgba(255,255,255,0.02);border:1px solid var(--border);
+  border-radius:6px;color:var(--text-muted);font-size:.62rem;font-weight:600;
+  cursor:pointer;transition:all .15s;text-align:center;
+}
+.fn-btn:hover{background:var(--gold-glow);color:var(--text)}
+.fn-btn:active{background:rgba(234,179,8,0.15);color:var(--gold)}
+
+/* On-screen keyboard bar */
+#osk-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:180;
+  background:rgba(17,17,17,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);padding:6px 10px;
+  transition:transform .3s var(--ease);
+}
+#osk-bar.osk-hidden{transform:translateY(100%)}
+.osk-row{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.osk-mod,.osk-key{
+  padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);
+  border-radius:6px;color:var(--text-muted);font-size:.7rem;font-weight:500;
+  cursor:pointer;transition:all .1s;touch-action:manipulation;user-select:none;
+}
+.osk-mod:active,.osk-key:active{background:rgba(234,179,8,0.15);color:var(--gold)}
+.osk-mod.held{background:rgba(234,179,8,0.2);color:var(--gold);border-color:var(--gold)}
+
+/* Info rows */
+.info-rows{display:flex;flex-direction:column;gap:6px}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
+.info-label{font-size:.7rem;color:var(--text-muted)}
+.info-value{font-size:.72rem;color:var(--text);font-weight:500}
+
+
+</style>
+<style>
+/* Overlay */
+#overlay{
+  position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+  background:rgba(10,10,10,0.85);backdrop-filter:blur(8px);transition:opacity var(--dur) var(--ease);
+}
+#overlay.hidden{opacity:0;pointer-events:none}
+.overlay-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:40px 48px;text-align:center;max-width:360px;
+  box-shadow:0 8px 40px rgba(0,0,0,0.5);animation:fadeUp .4s var(--ease) both;
+}
+.overlay-card.hidden{display:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.overlay-text{color:var(--text-muted);font-size:.85rem;margin-top:16px}
+.overlay-btn{
+  margin-top:20px;padding:10px 28px;background:var(--gold-glow);border:1px solid var(--border);
+  color:var(--gold);border-radius:8px;font-size:.78rem;font-weight:500;cursor:pointer;transition:all .15s;
+}
+.overlay-btn:hover{background:rgba(234,179,8,0.15);border-color:rgba(234,179,8,0.3)}
+
+/* Spinner */
+.spinner{width:32px;height:32px;margin:0 auto;border:3px solid rgba(234,179,8,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Error icon */
+.error-icon{
+  width:40px;height:40px;margin:0 auto;border-radius:50%;
+  background:rgba(239,68,68,0.1);border:2px solid rgba(239,68,68,0.3);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--red);font-size:1.2rem;font-weight:700;
+}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:50px;left:50%;transform:translateX(-50%) translateY(12px);
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:10px 20px;color:var(--text);font-size:.75rem;backdrop-filter:blur(12px);
+  opacity:0;transition:all .3s var(--ease);pointer-events:none;z-index:300;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Animated panel border beam */
+@property --beam-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
+@keyframes beamRotate{to{--beam-angle:360deg}}
+.side-panel.open{animation:beamRotate 4s linear infinite}
+
+/* Mobile keyboard button */
+#kbd-toggle{
+  display:none;position:fixed;top:60px;left:16px;z-index:250;
+  padding:8px 12px;background:rgba(17,17,17,0.85);backdrop-filter:blur(16px);
+  border:1px solid var(--border);border-radius:999px;color:var(--gold);
+  font-size:.7rem;font-weight:500;cursor:pointer;
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
+  align-items:center;gap:6px;
+  transition:all .2s var(--ease);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+#kbd-toggle:active{transform:scale(0.95)}
+#kbd-toggle:focus{outline:none}
+#kbd-toggle svg{flex-shrink:0}
+@media (max-width:1023px) and (pointer:coarse){
+  #kbd-toggle{display:flex}
+}
+</style>
+<script>
+// === State ===
+const TOKEN = '__GUAC_TOKEN__';
+let client = null;
+let mouse = null;
+let touchscreen = null;
+let currentWidth = 1366;
+let currentHeight = 768;
+let currentDepth = 24;
+let currentQuality = 7;
+let currentZoom = 0; // 0 = auto, else percentage
+let renderScale = 75; // render resolution percentage (balance preset default)
+let scrollSpeed = 0.5; // scroll sensitivity (0.25=slow, 0.5=default, 1=fast, 2=fastest)
+let remoteClipboard = '';
+let sessionStart = null;
+let timerInterval = null;
+let activePanel = null;
+let connected = false;
+
+// === Connection ===
+function buildConnectString() {
+  const params = new URLSearchParams();
+  params.set('token', TOKEN);
+  params.set('GUAC_DATA_SOURCE', 'postgresql');
+  params.set('GUAC_ID', '1');
+  params.set('GUAC_TYPE', 'c');
+  const rw = Math.round(currentWidth * renderScale / 100);
+  const rh = Math.round(currentHeight * renderScale / 100);
+  params.set('GUAC_WIDTH', String(rw));
+  params.set('GUAC_HEIGHT', String(rh));
+  params.set('GUAC_DPI', '96');
+  params.set('GUAC_IMAGE', 'image/jpeg');
+  params.set('GUAC_IMAGE', 'image/png');
+  params.set('GUAC_IMAGE', 'image/webp');
+  return params.toString();
+}
+
+var directStreamHost = null;
+var directStreamPort = null;
+var usingDirect = false;
+
+function createTunnel(directToken) {
+  if (directToken && directStreamHost) {
+    var wsUri = 'wss://' + directStreamHost + ':' + directStreamPort + '/stream/' + directToken;
+    usingDirect = true;
+    return new Guacamole.WebSocketTunnel(wsUri);
+  }
+  usingDirect = false;
+  if (typeof Guacamole.WebSocketTunnel !== 'undefined') {
+    var wsUri = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/tunnel/websocket-tunnel';
+    return new Guacamole.WebSocketTunnel(wsUri);
+  }
+  return new Guacamole.HTTPTunnel('/tunnel/tunnel');
+}
+
+async function getStreamToken() {
+  try {
+    var resp = await fetch('/api/stream-token', { method: 'POST', credentials: 'same-origin' });
+    if (!resp.ok) return null;
+    var data = await resp.json();
+    directStreamHost = data.host;
+    directStreamPort = data.port;
+    return data.token;
+  } catch(e) { return null; }
+}
+
+async function connect() {
+  showOverlay('connecting');
+  const displayArea = document.getElementById('display-area');
+  displayArea.innerHTML = '';
+
+  var directToken = await getStreamToken();
+  startClient(directToken);
+}
+
+function startClient(directToken) {
+  const displayArea = document.getElementById('display-area');
+  displayArea.innerHTML = '';
+  const tunnel = createTunnel(directToken);
+  client = new Guacamole.Client(tunnel);
+
+  var directTimeout = null;
+  if (directToken && usingDirect) {
+    directTimeout = setTimeout(function() {
+      console.log('Direct stream timeout, falling back');
+      try { client.disconnect(); } catch(e) {}
+      startClient(null);
+    }, 3000);
+  }
+
+  client.onstatechange = function(state) {
+    switch (state) {
+      case 0: updateState('Idle'); break;
+      case 1: updateState('Connecting'); break;
+      case 2: updateState('Waiting'); break;
+      case 3:
+        if (directTimeout) clearTimeout(directTimeout);
+        updateState('Connected');
+        connected = true;
+        hideOverlay();
+        startTimer();
+        startClipSync();
+        updateStatusDot(true);
+        break;
+      case 4: updateState('Disconnecting'); break;
+      case 5:
+        if (directTimeout) clearTimeout(directTimeout);
+        updateState('Disconnected');
+        connected = false;
+        stopTimer();
+        stopClipSync();
+        updateStatusDot(false);
+        showOverlay('disconnected');
+        break;
+    }
+  };
+
+  client.onerror = function(error) {
+    if (directTimeout) clearTimeout(directTimeout);
+    if (usingDirect) {
+      console.log('Direct stream failed, falling back to proxied tunnel');
+      try { client.disconnect(); } catch(e) {}
+      startClient(null);
+      return;
+    }
+    connected = false;
+    stopTimer();
+    updateStatusDot(false);
+    document.getElementById('error-msg').textContent = error.message || 'Connection error';
+    showOverlay('error');
+  };
+
+  client.onclipboard = function(stream, mimetype) {
+    if (mimetype !== 'text/plain') return;
+    let data = '';
+    stream.onblob = function(b64) { data += atob(b64); };
+    stream.onend = function() { onRemoteClipboard(data); };
+  };
+
+  const display = client.getDisplay();
+  const displayEl = display.getElement();
+  displayArea.appendChild(displayEl);
+
+  client.connect(buildConnectString());
+
+  setupKeyboard();
+  setupMouse(displayEl);
+  setupTouch(displayEl);
+  setupScaling();
+}
+</script>
+<script>
+// === Input Handlers ===
+var activeKeyboard = null;
+var kbdFocused = true;
+
+function setupKeyboard() {
+  if (activeKeyboard) { activeKeyboard.reset(); activeKeyboard = null; }
+  var displayEl = client.getDisplay().getElement();
+  displayEl.tabIndex = 0;
+  displayEl.style.outline = 'none';
+
+  var kbd = new Guacamole.Keyboard(document);
+  kbd.onkeydown = function(keysym) {
+    if (!client || !kbdFocused) return true;
+    client.sendKeyEvent(1, keysym);
+    // Let Ctrl+C/V/X through to browser for clipboard events
+    if (kbd.pressed[0xFFE3] || kbd.pressed[0xFFE4]) {
+      if (keysym === 0x0063 || keysym === 0x0043 || // c/C
+          keysym === 0x0076 || keysym === 0x0056 || // v/V
+          keysym === 0x0078 || keysym === 0x0058 || // x/X
+          keysym === 0x0061 || keysym === 0x0041) { // a/A (select all)
+        return true;
+      }
+    }
+    return false;
+  };
+  kbd.onkeyup = function(keysym) {
+    if (!client || !kbdFocused) return;
+    client.sendKeyEvent(0, keysym);
+  };
+  activeKeyboard = kbd;
+
+  // Track focus: only capture keys when display area or body is focused
+  displayEl.addEventListener('mousedown', function() { kbdFocused = true; });
+  displayEl.addEventListener('touchstart', function() {
+    kbdFocused = true;
+  });
+  // Unfocus keyboard when interacting with panels/inputs
+  document.querySelectorAll('.side-panel input, .side-panel textarea, .side-panel select, #mobile-input').forEach(function(el) {
+    el.addEventListener('focus', function() { kbdFocused = false; });
+    el.addEventListener('blur', function() { kbdFocused = true; });
+  });
+}
+
+function setupMouse(element) {
+  if (isMobile) return;
+
+  var mouseState = new Guacamole.Mouse.State(0, 0, false, false, false, false, false);
+
+  function getRemoteCoords(e) {
+    var rect = element.getBoundingClientRect();
+    var scale = client.getDisplay().getScale() || 1;
+    return {
+      x: Math.round((e.clientX - rect.left) / scale),
+      y: Math.round((e.clientY - rect.top) / scale)
+    };
+  }
+
+  element.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+  element.addEventListener('mousemove', function(e) {
+    if (!client) return;
+    var pos = getRemoteCoords(e);
+    mouseState.x = pos.x;
+    mouseState.y = pos.y;
+    client.sendMouseState(mouseState);
+  });
+
+  element.addEventListener('mousedown', function(e) {
+    if (!client) return;
+    e.preventDefault();
+    element.focus();
+    var pos = getRemoteCoords(e);
+    mouseState.x = pos.x;
+    mouseState.y = pos.y;
+    if (e.button === 0) mouseState.left = true;
+    else if (e.button === 1) mouseState.middle = true;
+    else if (e.button === 2) mouseState.right = true;
+    client.sendMouseState(mouseState);
+  });
+
+  element.addEventListener('mouseup', function(e) {
+    if (!client) return;
+    e.preventDefault();
+    var pos = getRemoteCoords(e);
+    mouseState.x = pos.x;
+    mouseState.y = pos.y;
+    if (e.button === 0) mouseState.left = false;
+    else if (e.button === 1) mouseState.middle = false;
+    else if (e.button === 2) mouseState.right = false;
+    client.sendMouseState(mouseState);
+  });
+
+  // Catch mouseup outside the element
+  document.addEventListener('mouseup', function(e) {
+    if (!client) return;
+    var changed = false;
+    if (e.button === 0 && mouseState.left) { mouseState.left = false; changed = true; }
+    else if (e.button === 1 && mouseState.middle) { mouseState.middle = false; changed = true; }
+    else if (e.button === 2 && mouseState.right) { mouseState.right = false; changed = true; }
+    if (changed) client.sendMouseState(mouseState);
+  });
+
+  var scrollAccum = 0;
+  var scrollThreshold = 120;
+
+  element.addEventListener('wheel', function(e) {
+    if (!client) return;
+    e.preventDefault();
+    var pos = getRemoteCoords(e);
+    mouseState.x = pos.x;
+    mouseState.y = pos.y;
+
+    scrollAccum += e.deltaY;
+    var thr = scrollThreshold / scrollSpeed;
+    while (Math.abs(scrollAccum) >= thr) {
+      mouseState.up = scrollAccum < 0;
+      mouseState.down = scrollAccum > 0;
+      client.sendMouseState(mouseState);
+      mouseState.up = false;
+      mouseState.down = false;
+      client.sendMouseState(mouseState);
+      scrollAccum -= (scrollAccum > 0 ? thr : -thr);
+    }
+  }, { passive: false });
+}
+
+
+function getAutoScale() {
+  if (!client) return 1;
+  const display = client.getDisplay();
+  const dw = display.getWidth() || currentWidth;
+  const dh = display.getHeight() || currentHeight;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  return Math.min(vw / dw, vh / dh, 1);
+}
+
+let isMobile = (window.matchMedia('(pointer:coarse)').matches && window.innerWidth < 1024);
+let touchMode = 'trackpad';
+let touchpad = null;
+
+function setupTouch(element) {
+  if (!isMobile) return;
+  applyTouchMode(element);
+}
+
+
+function applyTouchMode(element) {
+  if (!isMobile) return;
+  if (touchpad) { touchpad.onmousedown = null; touchpad.onmouseup = null; touchpad.onmousemove = null; }
+
+  // Remove old overlay if exists
+  var old = document.getElementById('touch-overlay');
+  if (old) old.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'touch-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:2;touch-action:none;overflow:hidden;';
+  document.body.appendChild(overlay);
+
+  var display = client ? client.getDisplay() : null;
+  var rw = display ? (display.getWidth() || 1920) : 1920;
+  var rh = display ? (display.getHeight() || 1080) : 1080;
+  Object.defineProperty(overlay, 'offsetWidth', { get: function() { return rw; }, configurable: true });
+  Object.defineProperty(overlay, 'offsetHeight', { get: function() { return rh; }, configurable: true });
+
+  touchpad = new Guacamole.Mouse.Touchpad(overlay);
+  touchpad.onmousedown = touchpad.onmouseup = touchpad.onmousemove = function(mouseState) {
+    if (!client) return;
+    client.getDisplay().showCursor(true);
+    client.sendMouseState(mouseState);
+  };
+}
+
+function setupScaling() {
+  function applyZoom() {
+    if (!client) return;
+    const display = client.getDisplay();
+    const dw = display.getWidth() || currentWidth;
+    const dh = display.getHeight() || currentHeight;
+    let scale;
+    if (currentZoom === 0) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      scale = Math.min(vw / dw, vh / dh, 1);
+    } else {
+      scale = currentZoom / 100;
+    }
+    // Native display scale - handles mouse coordinates automatically
+    display.scale(scale);
+  }
+  window.addEventListener('resize', applyZoom);
+  client.getDisplay().onresize = applyZoom;
+  setTimeout(applyZoom, 300);
+  setTimeout(applyZoom, 1000);
+}
+
+function setZoom(btn) {
+  document.querySelectorAll('.zoom-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  currentZoom = parseInt(btn.dataset.zoom);
+  if (client) {
+    const display = client.getDisplay();
+    const dw = display.getWidth() || currentWidth;
+    const dh = display.getHeight() || currentHeight;
+    let scale;
+    if (currentZoom === 0) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      scale = Math.min(vw / dw, vh / dh, 1);
+    } else {
+      scale = currentZoom / 100;
+    }
+    display.scale(scale);
+  }
+  toast('Zoom: ' + (currentZoom === 0 ? 'Auto' : currentZoom + '%'));
+}
+
+// === Key Sending ===
+function sendKeys(combo) {
+  if (!client) return;
+  const sequences = {
+    cad: [[1,0xFFE3],[1,0xFFE9],[1,0xFFFF],[0,0xFFFF],[0,0xFFE9],[0,0xFFE3]],
+    alttab: [[1,0xFFE9],[1,0xFF09],[0,0xFF09],[0,0xFFE9]],
+    altf4: [[1,0xFFE9],[1,0xFFC1],[0,0xFFC1],[0,0xFFE9]],
+    ctrlshiftesc: [[1,0xFFE3],[1,0xFFE1],[1,0xFF1B],[0,0xFF1B],[0,0xFFE1],[0,0xFFE3]],
+    super: [[1,0xFFEB],[0,0xFFEB]],
+    superd: [[1,0xFFEB],[1,0x0064],[0,0x0064],[0,0xFFEB]],
+    superl: [[1,0xFFEB],[1,0x006C],[0,0x006C],[0,0xFFEB]],
+    ctrlaltt: [[1,0xFFE3],[1,0xFFE9],[1,0x0074],[0,0x0074],[0,0xFFE9],[0,0xFFE3]],
+    prtsc: [[1,0xFF61],[0,0xFF61]],
+    altf2: [[1,0xFFE9],[1,0xFFBF],[0,0xFFBF],[0,0xFFE9]],
+  };
+  const seq = sequences[combo];
+  if (!seq) return;
+  seq.forEach(function(ev, i) {
+    setTimeout(function() { client.sendKeyEvent(ev[0], ev[1]); }, i * 20);
+  });
+  toast('Sent ' + combo);
+}
+
+
+// === Clipboard (auto-sync like Parsec/AnyDesk) ===
+let clipSyncEnabled = true;
+let lastLocalClip = '';
+let lastRemoteClip = '';
+let clipPollInterval = null;
+
+// Direct paste event listener — catches Ctrl+V from keyboard passthrough
+document.addEventListener('paste', function(e) {
+  if (!client || !connected) return;
+  var text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  if (text) {
+    pushToRemote(text);
+    lastLocalClip = text;
+    showClipDir('paste → remote');
+  }
+});
+
+// Direct copy event — inject remote clipboard data into local copy
+document.addEventListener('copy', function(e) {
+  if (lastRemoteClip && kbdFocused) {
+    e.clipboardData.setData('text/plain', lastRemoteClip);
+    e.preventDefault();
+    showClipDir('remote → copied');
+  }
+});
+
+function toggleClipSync(on) {
+  clipSyncEnabled = on;
+  if (on) { startClipSync(); }
+  else { stopClipSync(); }
+  toast('Clipboard sync ' + (on ? 'on' : 'off'));
+}
+
+function startClipSync() {
+  stopClipSync();
+  clipPollInterval = setInterval(pollLocalClipboard, 500);
+}
+
+function stopClipSync() {
+  if (clipPollInterval) { clearInterval(clipPollInterval); clipPollInterval = null; }
+}
+
+function pollLocalClipboard() {
+  if (!clipSyncEnabled || !client || !connected) return;
+  if (!navigator.clipboard || !navigator.clipboard.readText) return;
+  navigator.clipboard.readText().then(function(text) {
+    if (text && text !== lastLocalClip && text !== lastRemoteClip) {
+      lastLocalClip = text;
+      pushToRemote(text);
+      showClipDir('local → remote');
+    }
+  }).catch(function() {});
+}
+
+function pushToRemote(text) {
+  if (!client) return;
+  var stream = client.createClipboardStream('text/plain');
+  var encoded = btoa(unescape(encodeURIComponent(text)));
+  stream.sendBlob(encoded);
+  stream.sendEnd();
+}
+
+function onRemoteClipboard(text) {
+  lastRemoteClip = text;
+  if (clipSyncEnabled && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      showClipDir('remote → local');
+    }).catch(function() {
+      document.getElementById('clip-text').value = text;
+      showClipDir('remote → panel (browser blocked)');
+    });
+  } else {
+    document.getElementById('clip-text').value = text;
+  }
+}
+
+function showClipDir(msg) {
+  var el = document.getElementById('clip-dir');
+  el.textContent = msg;
+  el.style.opacity = '1';
+  setTimeout(function() { el.style.opacity = '0.5'; }, 2000);
+}
+
+function sendClipboard() {
+  if (!client) return;
+  var text = document.getElementById('clip-text').value;
+  if (!text) return;
+  pushToRemote(text);
+  lastLocalClip = text;
+  toast('Sent to remote');
+}
+
+function pullClipboard() {
+  document.getElementById('clip-text').value = lastRemoteClip || '(nothing received yet)';
+  if (lastRemoteClip && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(lastRemoteClip);
+  }
+  toast('Remote clipboard loaded');
+}
+
+function toggleAutoSync(checked) { toggleClipSync(checked); }
+</script>
+<script>
+// === Screenshot ===
+function takeScreenshot() {
+  if (!client) return;
+  const canvas = client.getDisplay().flatten();
+  canvas.toBlob(function(blob) {
+    if (navigator.clipboard && navigator.clipboard.write) {
+      navigator.clipboard.write([new ClipboardItem({'image/png': blob})]).then(function() {
+        toast('Screenshot copied to clipboard');
+      }).catch(function() {
+        downloadBlob(blob);
+      });
+    } else {
+      downloadBlob(blob);
+    }
+  }, 'image/png');
+}
+
+function downloadBlob(blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'screenshot-' + Date.now() + '.png';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Screenshot downloaded');
+}
+
+// === Panel Management ===
+function togglePanel(name) {
+  const panels = document.querySelectorAll('.side-panel');
+  const btn = document.getElementById('btn-' + name);
+  if (activePanel === name) {
+    document.getElementById('panel-' + name).classList.remove('open');
+    if (btn) btn.classList.remove('active');
+    activePanel = null;
+  } else {
+    panels.forEach(function(p) { p.classList.remove('open'); });
+    document.querySelectorAll('.tb-btn[data-panel]').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById('panel-' + name).classList.add('open');
+    if (btn) btn.classList.add('active');
+    activePanel = name;
+  }
+}
+
+// === Display Settings ===
+function setRes(btn) {
+  const w = parseInt(btn.dataset.w);
+  const h = parseInt(btn.dataset.h);
+  document.querySelectorAll('.res-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  currentWidth = w;
+  currentHeight = h;
+  document.getElementById('info-res').textContent = w + 'x' + h;
+  document.getElementById('sb-res').textContent = w + 'x' + h;
+  toast('Resolution: ' + w + 'x' + h + ' — reconnecting...');
+  doReconnect();
+}
+
+function updateQuality(val) {
+  currentQuality = parseInt(val);
+}
+
+function setRenderScaleSelect(val) {
+  renderScale = parseInt(val);
+  const rw = Math.round(currentWidth * renderScale / 100);
+  const rh = Math.round(currentHeight * renderScale / 100);
+  toast('Render: ' + renderScale + '% (' + rw + 'x' + rh + ') — reconnecting...');
+  doReconnect();
+}
+
+function setPreset(name) {
+  document.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('[data-preset="' + name + '"]').classList.add('active');
+  const desc = document.getElementById('preset-desc');
+  const sel = document.getElementById('render-select');
+  switch (name) {
+    case 'speed':
+      currentDepth = 16; renderScale = 50;
+      desc.textContent = 'Speed — 16-bit color, 50% render';
+      break;
+    case 'balance':
+      currentDepth = 24; renderScale = 75;
+      desc.textContent = 'Balanced — 24-bit color, 75% render';
+      break;
+    case 'quality':
+      currentDepth = 32; renderScale = 100;
+      desc.textContent = 'Quality — 32-bit color, 100% render';
+      break;
+  }
+  sel.value = String(renderScale);
+  toast(name.charAt(0).toUpperCase() + name.slice(1) + ' preset — reconnecting...');
+  doReconnect();
+}
+
+function updateQuality(val) {
+  currentQuality = parseInt(val);
+}
+
+// === Toolbar: Drag via HK, tap to hide ===
+(function() {
+  const brand = document.getElementById('tb-brand');
+  const tb = document.getElementById('toolbar');
+  let isDragging = false;
+  let isActive = false;
+  let dragTimer = null;
+  let startX = 0, startY = 0, tbX = 0, tbY = 0;
+
+  function getPos(e) {
+    var t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX, y: t.clientY };
+  }
+
+  function onStart(e) {
+    isActive = true;
+    var pos = getPos(e);
+    startX = pos.x; startY = pos.y;
+    isDragging = false;
+    dragTimer = setTimeout(function() { isDragging = true; tb.style.transition = 'none'; }, 200);
+    e.preventDefault();
+  }
+
+  function onMove(e) {
+    if (!isActive) return;
+    if (!isDragging) {
+      var pos = getPos(e);
+      if (Math.abs(pos.x - startX) > 5 || Math.abs(pos.y - startY) > 5) {
+        isDragging = true; tb.style.transition = 'none';
+      } else return;
+    }
+    e.preventDefault();
+    var pos = getPos(e);
+    var dx = pos.x - startX;
+    var dy = pos.y - startY;
+    tbX += dx; tbY += dy;
+    startX = pos.x; startY = pos.y;
+    tb.style.left = 'calc(50% + ' + tbX + 'px)';
+    tb.style.top = (14 + tbY) + 'px';
+  }
+
+  function onEnd() {
+    if (!isActive) return;
+    clearTimeout(dragTimer);
+    tb.style.transition = '';
+    if (!isDragging) { toggleToolbar(); }
+    isDragging = false;
+    isActive = false;
+  }
+
+  brand.addEventListener('mousedown', onStart);
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onEnd);
+  brand.addEventListener('touchstart', onStart, { passive: false });
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onEnd);
+})();
+
+function toggleToolbar() {
+  var tb = document.getElementById('toolbar');
+  tb.classList.toggle('collapsed');
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var tb = document.getElementById('toolbar');
+    if (tb.classList.contains('collapsed')) { tb.classList.remove('collapsed'); e.preventDefault(); }
+  }
+});
+
+(function() {
+  var lastTap = 0;
+  document.addEventListener('touchstart', function(e) {
+    if (e.touches[0].clientY > 60) return;
+    var now = Date.now();
+    if (now - lastTap < 300) {
+      var tb = document.getElementById('toolbar');
+      if (tb.classList.contains('collapsed')) tb.classList.remove('collapsed');
+    }
+    lastTap = now;
+  });
+})();
+
+// === On-screen Keyboard ===
+var oskVisible = false;
+function toggleOSK() {
+  oskVisible = !oskVisible;
+  document.getElementById('osk-bar').classList.toggle('osk-hidden', !oskVisible);
+  document.getElementById('btn-osk').classList.toggle('active', oskVisible);
+  if (isMobile && oskVisible) document.getElementById('mobile-input').focus();
+}
+
+var oskMods = { ctrl: false, alt: false, shift: false };
+function oskModDown(mod) {
+  oskMods[mod] = !oskMods[mod];
+  document.getElementById('osk-' + mod).classList.toggle('held', oskMods[mod]);
+  var sym = mod === 'ctrl' ? 0xFFE3 : mod === 'alt' ? 0xFFE9 : 0xFFE1;
+  if (client) client.sendKeyEvent(oskMods[mod] ? 1 : 0, sym);
+}
+
+function oskKey(keysym) {
+  if (!client) return;
+  client.sendKeyEvent(1, keysym);
+  client.sendKeyEvent(0, keysym);
+  releaseOskMods();
+}
+
+var capsOn = false;
+function oskToggleCaps() {
+  if (!client) return;
+  capsOn = !capsOn;
+  client.sendKeyEvent(1, 0xFFE5);
+  client.sendKeyEvent(0, 0xFFE5);
+  document.getElementById('osk-caps').classList.toggle('held', capsOn);
+}
+
+function releaseOskMods() {
+  if (oskMods.ctrl) { client.sendKeyEvent(0, 0xFFE3); oskMods.ctrl = false; document.getElementById('osk-ctrl').classList.remove('held'); }
+  if (oskMods.alt) { client.sendKeyEvent(0, 0xFFE9); oskMods.alt = false; document.getElementById('osk-alt').classList.remove('held'); }
+  if (oskMods.shift) { client.sendKeyEvent(0, 0xFFE1); oskMods.shift = false; document.getElementById('osk-shift').classList.remove('held'); }
+}
+
+// === Keys Panel: Sticky Modifiers ===
+var panelMods = { ctrl: false, alt: false, shift: false, super: false };
+function toggleMod(mod) {
+  panelMods[mod] = !panelMods[mod];
+  document.getElementById('mod-' + mod).classList.toggle('held', panelMods[mod]);
+  var sym = { ctrl: 0xFFE3, alt: 0xFFE9, shift: 0xFFE1, super: 0xFFEB }[mod];
+  if (client) client.sendKeyEvent(panelMods[mod] ? 1 : 0, sym);
+}
+
+function sendFn(n) {
+  if (!client) return;
+  var keysym = 0xFFBE + (n - 1); // F1=0xFFBE, F2=0xFFBF, ...
+  client.sendKeyEvent(1, keysym);
+  client.sendKeyEvent(0, keysym);
+  releasePanelMods();
+  toast('F' + n);
+}
+
+function sendSingle(keysym) {
+  if (!client) return;
+  client.sendKeyEvent(1, keysym);
+  client.sendKeyEvent(0, keysym);
+  releasePanelMods();
+}
+
+function releasePanelMods() {
+  Object.keys(panelMods).forEach(function(mod) {
+    if (panelMods[mod]) {
+      var sym = { ctrl: 0xFFE3, alt: 0xFFE9, shift: 0xFFE1, super: 0xFFEB }[mod];
+      client.sendKeyEvent(0, sym);
+      panelMods[mod] = false;
+      document.getElementById('mod-' + mod).classList.remove('held');
+    }
+  });
+}
+
+function toggleLocalCursor(on) {
+  toast('Local cursor ' + (on ? 'on' : 'off') + ' — reconnecting...');
+  doReconnect();
+}
+
+function setScrollSpeed(val) {
+  scrollSpeed = parseFloat(val);
+  toast('Scroll speed: ' + (val <= 0.25 ? 'Slow' : val <= 0.5 ? 'Normal' : val <= 1 ? 'Fast' : 'Fastest'));
+}
+
+</script>
+<script>
+// === Connection Controls ===
+async function checkSession() {
+  try {
+    var resp = await fetch('/api/ping', { method: 'POST', credentials: 'same-origin' });
+    if (resp.status === 401) return false;
+    return true;
+  } catch(e) { return false; }
+}
+
+function bounceToLogin() {
+  window.location.href = '/';
+}
+
+function doReconnect() {
+  if (client) {
+    try { client.disconnect(); } catch (e) {}
+  }
+  checkSession().then(function(valid) {
+    if (!valid) { bounceToLogin(); return; }
+    setTimeout(connect, 300);
+  });
+}
+
+function doDisconnect() {
+  if (client) {
+    try { client.disconnect(); } catch (e) {}
+  }
+  connected = false;
+  stopTimer();
+  updateStatusDot(false);
+  showOverlay('disconnected');
+}
+
+function doLogout() {
+  fetch('/api/logout', { method: 'POST' }).finally(function() {
+    window.location.href = '/';
+  });
+}
+
+// === Overlay ===
+function showOverlay(type) {
+  const overlay = document.getElementById('overlay');
+  overlay.classList.remove('hidden');
+  document.getElementById('overlay-connecting').classList.add('hidden');
+  document.getElementById('overlay-error').classList.add('hidden');
+  document.getElementById('overlay-disconnected').classList.add('hidden');
+  document.getElementById('overlay-' + type).classList.remove('hidden');
+}
+
+function hideOverlay() {
+  document.getElementById('overlay').classList.add('hidden');
+}
+
+// === Status ===
+let latencyInterval = null;
+
+function updateState(text) {
+  var infoText = text;
+  if (text === 'Connected') {
+    infoText = usingDirect ? 'Direct' : 'Proxied';
+    startLatencyPing();
+  } else {
+    stopLatencyPing();
+    document.getElementById('sb-state').textContent = text;
+  }
+  document.getElementById('info-state').textContent = infoText;
+}
+
+function startLatencyPing() {
+  stopLatencyPing();
+  measureLatency();
+  latencyInterval = setInterval(measureLatency, 3000);
+}
+
+function stopLatencyPing() {
+  if (latencyInterval) { clearInterval(latencyInterval); latencyInterval = null; }
+}
+
+function measureLatency() {
+  const start = performance.now();
+  const pingUrl = usingDirect
+    ? 'https://' + directStreamHost + ':' + directStreamPort + '/'
+    : '/tunnel/tunnel?ping=1';
+  const opts = usingDirect
+    ? { method: 'HEAD', cache: 'no-store', mode: 'no-cors' }
+    : { method: 'HEAD', cache: 'no-store' };
+  fetch(pingUrl, opts).then(function() {
+    const ms = Math.round(performance.now() - start);
+    document.getElementById('sb-state').textContent = ms + 'ms';
+  }).catch(function() {
+    document.getElementById('sb-state').textContent = '--';
+  });
+}
+
+function updateStatusDot(on) {
+  const dot = document.getElementById('status-dot');
+  if (on) {
+    dot.classList.add('connected');
+  } else {
+    dot.classList.remove('connected');
+  }
+}
+
+// === Timer ===
+function startTimer() {
+  sessionStart = Date.now();
+  timerInterval = setInterval(updateTimer, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+function updateTimer() {
+  if (!sessionStart) return;
+  const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+  const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+  const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('sb-timer').textContent = h + ':' + m + ':' + s;
+}
+
+// === Toast ===
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+// === Mobile Input ===
+var mobileKbdOpen = false;
+function openMobileKbd(e) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  var mi = document.getElementById('mobile-input');
+  if (!mi) return;
+  mobileKbdOpen = true;
+  document.getElementById('kbd-toggle').style.display = 'none';
+  mi.focus();
+}
+(function() {
+  const mobileInput = document.getElementById('mobile-input');
+  if (mobileInput) {
+    var composing = false;
+    mobileInput.addEventListener('compositionstart', function() { composing = true; });
+    mobileInput.addEventListener('compositionend', function(e) {
+      composing = false;
+      // Send the composed text (Chinese characters etc)
+      if (!client || !e.data) return;
+      for (var i = 0; i < e.data.length; i++) {
+        var code = e.data.charCodeAt(i);
+        client.sendKeyEvent(1, code);
+        client.sendKeyEvent(0, code);
+      }
+      mobileInput.value = '        ';
+      mobileInput.setSelectionRange(4, 4);
+    });
+    mobileInput.addEventListener('input', function(e) {
+      if (!client || composing) return;
+      if (e.inputType === 'insertCompositionText') return;
+      var char = e.data;
+      if (char) {
+        var code = char.charCodeAt(0);
+        client.sendKeyEvent(1, code);
+        client.sendKeyEvent(0, code);
+      }
+      mobileInput.value = '        ';
+      mobileInput.setSelectionRange(4, 4);
+    });
+    mobileInput.addEventListener('beforeinput', function(e) {
+      // Detect Gboard cursor movement via selection change
+      if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
+        return; // let keydown handle these
+      }
+    });
+    // Init with padding
+    mobileInput.value = '        ';
+    mobileInput.addEventListener('focus', function() {
+      mobileInput.value = '        ';
+      mobileInput.setSelectionRange(4, 4);
+    });
+    // Detect Gboard spacebar-swipe cursor movement via selection change
+    var lastSelPos = 4;
+    mobileInput.addEventListener('selectionchange', function() {
+      if (!client || document.activeElement !== mobileInput) return;
+      var pos = mobileInput.selectionStart;
+      if (pos === lastSelPos) return;
+      var diff = pos - lastSelPos;
+      var sym = diff > 0 ? 0xFF53 : 0xFF51; // Right : Left
+      var count = Math.abs(diff);
+      for (var i = 0; i < count; i++) {
+        client.sendKeyEvent(1, sym);
+        client.sendKeyEvent(0, sym);
+      }
+      lastSelPos = pos;
+    });
+    document.addEventListener('selectionchange', function() {
+      if (document.activeElement !== mobileInput) return;
+      var pos = mobileInput.selectionStart;
+      if (pos === lastSelPos) return;
+      var diff = pos - lastSelPos;
+      var sym = diff > 0 ? 0xFF53 : 0xFF51;
+      var count = Math.abs(diff);
+      for (var i = 0; i < count; i++) {
+        client.sendKeyEvent(1, sym);
+        client.sendKeyEvent(0, sym);
+      }
+      lastSelPos = pos;
+    });
+    mobileInput.addEventListener('keydown', function(e) {
+      if (!client) return;
+      var keyMap = {
+        'Backspace': 0xFF08,
+        'Enter': 0xFF0D,
+        'ArrowLeft': 0xFF51,
+        'ArrowUp': 0xFF52,
+        'ArrowRight': 0xFF53,
+        'ArrowDown': 0xFF54,
+        'Tab': 0xFF09,
+        'Escape': 0xFF1B,
+        'Delete': 0xFFFF,
+        'Home': 0xFF50,
+        'End': 0xFF57
+      };
+      var sym = keyMap[e.key];
+      if (sym) {
+        client.sendKeyEvent(1, sym);
+        client.sendKeyEvent(0, sym);
+        e.preventDefault();
+      }
+    });
+  }
+})();
+
+// === Init ===
+window.addEventListener('DOMContentLoaded', function() {
+  connect();
+});
+
+// Prevent default context menu on display
+document.getElementById('display-area').addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+// Mobile: shift display up when soft keyboard is open + manage keyboard state
+if (isMobile && window.visualViewport) {
+  window.visualViewport.addEventListener('resize', function() {
+    var vp = window.visualViewport;
+    var kbHeight = window.innerHeight - vp.height;
+    var area = document.getElementById('display-area');
+    var btn = document.getElementById('kbd-toggle');
+    if (kbHeight > 100) {
+      // Keyboard is open
+      area.style.bottom = kbHeight + 'px';
+      area.style.height = 'auto';
+      mobileKbdOpen = true;
+      if (btn) btn.style.display = 'none';
+    } else {
+      // Keyboard is closed
+      area.style.bottom = '0';
+      area.style.height = '';
+      mobileKbdOpen = false;
+      if (btn) btn.style.display = '';
+      // Force blur the hidden input so it doesn't reopen
+      var mi = document.getElementById('mobile-input');
+      if (mi && document.activeElement === mi) mi.blur();
+    }
+  });
+}
+
+// Prevent all scroll/bounce on display area and body
+document.addEventListener('touchmove', function(e) {
+  if (!e.target.closest('.side-panel') && !e.target.closest('#kbd-toggle')) {
+    e.preventDefault();
+  }
+}, { passive: false });
+document.body.addEventListener('scroll', function(e) { e.preventDefault(); }, { passive: false });
+
+// Window focus management
+window.addEventListener('focus', function() {
+  // Release any stuck modifier keys on refocus
+  if (client) {
+    [0xFFE1,0xFFE2,0xFFE3,0xFFE4,0xFFE9,0xFFEA,0xFFEB,0xFFEC].forEach(function(k) {
+      client.sendKeyEvent(0, k);
+    });
+  }
+});
+
+// Detect wake-from-sleep: if page was hidden for >10s, connection is likely dead
+(function() {
+  var lastTick = Date.now();
+  setInterval(function() { lastTick = Date.now(); }, 2000);
+
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) return;
+    var gap = Date.now() - lastTick;
+    if (gap > 10000 && connected) {
+      console.log('Wake detected (' + Math.round(gap/1000) + 's gap), checking connection');
+      checkSession().then(function(valid) {
+        if (!valid) { bounceToLogin(); return; }
+        // Session alive but tunnel likely dead — force reconnect
+        doReconnect();
+      });
+    }
+  });
+})();
+
+// === PWA Service Worker ===
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(function(reg) {
+    reg.addEventListener('updatefound', function() {
+      var newWorker = reg.installing;
+      newWorker.addEventListener('statechange', function() {
+        if (newWorker.state === 'activated') {
+          window.location.reload();
+        }
+      });
+    });
+    // Check for updates every 60s
+    setInterval(function() { reg.update(); }, 60000);
+  });
+}
+</script>
+</body>
+</html>

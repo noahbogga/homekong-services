@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  odds-engine:
+    build: .
+    container_name: hk-odds-engine
+    restart: unless-stopped
+    ports:
+      - "4200:4200"
+    environment:
+      - NODE_ENV=production
+      - PORT=4200
+      - DB_HOST=192.168.50.247
+      - DB_PORT=3306
+      - DB_USER=CHANGE_ME
+      - DB_PASS=CHANGE_ME
+      - DB_NAME=zx_wxyz_stream
+      - AUTH_SECRET=CHANGE_ME
+      - GAME_CASH_URL=http://192.168.50.235:30120/hk-sportsbetting/applyCash
+      - GAME_CASH_SECRET=CHANGE_ME
+      - ZQ_API_URL=https://zx.wxyz.stream
+      - ADMIN_SECRET=CHANGE_ME
+      - DISCORD_WEBHOOK_ACTIVITY=CHANGE_ME
+      - DISCORD_WEBHOOK_BETS=CHANGE_ME
+    volumes:
+      - ./data:/app/data
+      - ./admin-ui:/app/admin-ui
+
+  stake-odds:
+    build: /home/dockeradmin/services/stake-odds
+    container_name: stake-odds
+    restart: unless-stopped
+    ports:
+      - 4201:4201
+    environment:
+      - NODE_ENV=production
+      - PORT=4201
+      - ENGINE_URL=http://hk-odds-engine:4200
+      - AUTH_SECRET=CHANGE_ME
+      - THORDATA_HOST=YOUR_PROXY_HOST
+      - THORDATA_USER=CHANGE_ME
+      - THORDATA_PASS=CHANGE_ME
+    depends_on:
+      - odds-engine

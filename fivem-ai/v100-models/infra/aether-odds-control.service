@@ -1,0 +1,15 @@
+[Unit]
+Description=Aether Odds Control API (scoped settings manager for aether-odds)
+After=network.target aether-odds.service
+Wants=aether-odds.service
+
+[Service]
+Type=simple
+User=dockeradmin
+WorkingDirectory=/home/dockeradmin/services/odds
+ExecStart=/usr/bin/python3 /home/dockeradmin/services/odds/control_api.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

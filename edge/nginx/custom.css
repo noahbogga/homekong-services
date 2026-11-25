@@ -1,0 +1,67 @@
+/* Override Picsur green (#43a047) with Homekong blue */
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-unelevated-button.mat-primary,
+.mat-mdc-flat-button.mat-primary,
+.mat-mdc-fab.mat-primary,
+.mat-mdc-mini-fab.mat-primary,
+.mdc-button--raised.mat-primary,
+[class*="mat"][class*="primary"] {
+    --mdc-filled-button-container-color: #1e3a5f !important;
+    --mdc-protected-button-container-color: #1e3a5f !important;
+    background-color: #1e3a5f !important;
+}
+
+.mat-mdc-raised-button.mat-primary:hover,
+.mat-mdc-unelevated-button.mat-primary:hover,
+.mat-mdc-flat-button.mat-primary:hover {
+    background-color: #2c4f7c !important;
+}
+
+/* Toolbar / header background */
+.mat-toolbar.mat-primary,
+mat-toolbar.mat-primary {
+    background-color: #1a2744 !important;
+}
+
+/* Text logo (right) - make it fit nicely */
+.svg-logo-text img {
+    height: 28px !important;
+    width: auto !important;
+    object-fit: contain;
+}
+
+/* Icon logo (left) - keep square */
+.svg-logo img {
+    height: 40px !important;
+    width: 40px !important;
+    border-radius: 15% !important;
+}
+
+/* Checkboxes */
+.mat-primary .mdc-checkbox--selected,
+.mat-mdc-checkbox.mat-primary {
+    --mdc-checkbox-selected-focus-icon-color: #1e3a5f !important;
+    --mdc-checkbox-selected-hover-icon-color: #2c4f7c !important;
+    --mdc-checkbox-selected-icon-color: #1e3a5f !important;
+}
+
+/* Progress bar */
+.mat-mdc-progress-bar .mdc-linear-progress__bar-inner {
+    border-color: #1e3a5f !important;
+}
+
+/* Slide toggle */
+.mat-mdc-slide-toggle.mat-primary {
+    --mdc-switch-selected-track-color: #1e3a5f !important;
+    --mdc-switch-selected-handle-color: #2c4f7c !important;
+}
+
+/* FAB / upload button */
+.mat-mdc-fab.mat-primary, .mat-mdc-mini-fab.mat-primary {
+    background-color: #1e3a5f !important;
+}
+
+/* Links */
+a {
+    color: #2c4f7c;
+}

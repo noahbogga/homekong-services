@@ -1,0 +1,20 @@
+# /etc/systemd/system/hk-npc.service
+# HK NPC-AI dialog model (Dolphin-2.9-Llama3-8B via llama-server).
+# HOMEKONG-facing SHARED INFERENCE ENDPOINT on the Aether V100 (.209) per the
+# CLAUDE.md carve-out: gateway/logic live on .247, only the raw call crosses here.
+[Unit]
+Description=HK NPC-AI Dialog Model (Dolphin-8B via llama-server, HOMEKONG NPC backend)
+After=network.target nvidia-persistenced.service
+
+[Service]
+Type=simple
+User=dockeradmin
+Environment=CUDA_VISIBLE_DEVICES=0
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do nvidia-smi > /dev/null 2>&1 && exit 0; sleep 2; done; exit 1'
+ExecStart=/home/dockeradmin/services/npc/npc-launch.sh
+ExecStartPost=/home/dockeradmin/services/npc/npc-healthcheck.sh
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target
